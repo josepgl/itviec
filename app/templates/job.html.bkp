@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Job ID: {{job_id}} - {{j.title}}{% endblock %}
+
+{% block app_content %}
+
+<h1>Job ID: {{job_id}}</h1>
+
+<h2>{{j.title}}</h2>
+
+<div></div>
+
+<div class="container">
+  <div class="row">
+    <div class="col-sm-2">URL:</div>
+    <div class="col-sm"><a href="http://www.itviec.com{{j.url}}">http://www.itviec.com{{j.url}}</a></div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Employer:</div>
+    <div class="col-sm">{{j.employer}}</div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Employer URL:</div>
+    <div class="col-sm"><a href="http://www.itviec.com{{j.employer_url}}">http://www.itviec.com{{j.employer_url}}</a></div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Salary:</div>
+    <div class="col-sm">{{j.salary}}</div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Address:</div>
+    <div class="col-sm">
+      <div class="btn btn-outline-dark btn-sm disabled">{{j.address[0]}}</div>
+      <div class="btn btn-outline-dark btn-sm disabled">{{j.address[1]}}</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Description:</div>
+    <div class="col-sm">{{j.desc}}</div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Time:</div>
+    <div class="col-sm">{{j.time}}</div>
+  </div>
+  <div class="row">
+    <div class="col-sm-2">Tags:</div>
+    <div class="col-sm">
+      <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[0]}}</div>
+      <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[1]}}</div>
+      <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[2]}}</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="container pt-5 pb-5">
+  <h1>404: File not found</h1>
+
+  <p><a class="text-dark" href="/">Back</a></p>
+
+<!--
+  <img src="/img/not_found.png">
+-->
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+body {
+    background: url("/img/not_found.png") no-repeat center center fixed;
+    background-size: cover;
+}
+</style>
+{{super()}}
+{% endblock %}

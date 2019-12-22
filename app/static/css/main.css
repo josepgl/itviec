@@ -1,0 +1,84 @@
+body {
+  margin: unset;
+}
+
+section {
+  margin-left: 8px;
+  margin-right: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+footer {
+  text-align: center;
+
+  clear: both;
+  position: relative;
+
+/*
+  position: fixed;
+  bottom: 0;
+*/
+
+/*
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 50px;            /* Footer height */
+*/
+}
+
+.page-header {
+  background-color: #000;
+}
+
+.main-nav {
+  display: inline-block;
+}
+
+.valign-mid {
+  vertical-align: middle;
+}
+
+.img-valign {
+  vertical-align: middle;
+  margin-bottom: 0.75em;
+}
+
+.logo-itviec {
+  padding-right: 20px;
+  padding-left: 12px;
+}
+
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+li {
+  display: inline-block;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 18px;
+  text-decoration: none;
+}
+
+li img {
+  display: block;
+  color: white;
+//  text-align: center;
+//  padding: 14px 18px;
+  text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+  background-color: #333;
+}

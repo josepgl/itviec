@@ -1,0 +1,75 @@
+{% extends 'bootstrap/base.html' %}
+
+{% block title %}
+    {% if title %}{{ title }} - Microblog{% else %}Welcome to Microblog{% endif %}
+{% endblock %}
+
+{% block navbar %}
+    <nav class="navbar navbar-default">
+
+      <ul>
+        <li>
+          <a href="/">
+            <img class="logo-itviec valign-mid" alt="itviec" src="https://itviec.com/assets/logo-itviec-65afac80e92140efa459545bc1c042ff4275f8f197535f147ed7614c2000ab0f.png" width="94" height="35">
+          </a>
+        </li>
+        <li><a href="/hcm">Ho Chi Minh</a></li>
+        <li><a href="/tags">Tags</a></li>
+        <li><a href="/about">About</a></li>
+      </ul>
+
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-info" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {# application content needs to be provided in the app_content block #}
+        {% block app_content %}{% endblock %}
+    </div>
+{% endblock %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<title>ITViec app</title>
+
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" type="text/css" href="/css/main.css">
+</head>
+
+<body>
+<header class="page-header">
+  <a href="/">
+    <img class="logo-itviec valign-mid" alt="itviec" src="https://itviec.com/assets/logo-itviec-65afac80e92140efa459545bc1c042ff4275f8f197535f147ed7614c2000ab0f.png" width="94" height="35">
+  </a>
+  <nav class="main-nav valign-mid">
+    <ul>
+      <li><a href="/hcm">Ho Chi Minh</a></li>
+      <li><a href="/tags">Tags</a></li>
+      <li><a href="/about">About</a></li>
+    </ul>
+  </nav>
+</header>
+
+<section>
+{% block body %}{% endblock %}
+</section>
+
+<footer>
+  <p>Copyright © 2019 by Totoro Software. All Rights Reserved.</p>
+</footer>
+
+</body>
+</html>

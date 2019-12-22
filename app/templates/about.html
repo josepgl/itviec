@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block app_content %}
+<div class="container pt-5 pb-5">
+    <h1>About</h1>
+
+    <p>Made by <a href="mailto:josepgl@gmail.com">Jose P. Garcia</a></p>
+
+    <p>Using:
+    <ul>
+        <li>Python</li>
+        <li>Flask</li>
+        <li>BeautifulSoup</li>
+        <li>SQLite</li>
+        <li>Bootstrap</li>
+        <li>...</li>
+    </ul>
+    </p>
+</div>
+{% endblock %}
+
+
+{% block head %}
+<style>
+body {
+    background: url("/img/desk.png") no-repeat center center fixed;
+    background-size: cover;
+}
+</style>
+{{super()}}
+{% endblock %}
+
