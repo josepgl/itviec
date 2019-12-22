@@ -6,15 +6,15 @@ from ItViec import ItViec
 
 @app.route("/")
 def index():
-    itviec = ItViec()
-    jids = itviec.get_latest_jobids()
-    jobs = itviec.get_jobs(jids)
-    return render_template("front_page.html", jobs=jobs)
+    return render_template("front_page.html")
 
 
 @app.route("/jobs")
 def jobs():
-    return render_template("jobs.html")
+    itviec = ItViec()
+    jids = itviec.get_latest_jobids()
+    jobs = itviec.get_jobs(jids)
+    return render_template("jobs.html", jobs=jobs)
 
 
 @app.route("/jobs/<int:j_id>/")
