@@ -1,35 +1,12 @@
 import os
 
-from flask import Flask
-from flask_bootstrap import Bootstrap
-
-
-# create and configure app
-app = Flask(__name__, static_url_path='')
-print("Starting app")
-
-# ensure the instance folder exists
-try:
-    os.makedirs(app.instance_path)
-except OSError:
-    pass
-
-bootstrap = Bootstrap(app)
-
-from app import routes
+from flask import Flask, render_template
 
 
 def create_app(test_config=None):
-    # create and configure app
-    # app = Flask(__name__, static_url_path='')
-    app = Flask(__name__, instance_relative_config=True, static_url_path='')
-
     print("Starting app")
-
+    app = Flask(__name__, instance_relative_config=True, static_url_path='')
     app.config.from_mapping(
-        # a default secret that should be overridden by instance config
-        SECRET_KEY="dev",
-        # store the database in the instance folder
         DATABASE=os.path.join(app.instance_path, 'ItViec.sqlite')
     )
 
@@ -50,21 +27,23 @@ def create_app(test_config=None):
     def hello():
         return "Hello, World!"
 
+    @app.errorhandler(404)
+    def page_not_found(e):
+        # note that we set the 404 status explicitly
+        return render_template("404.html"), 404
+
+    @app.route("/about")
+    def about():
+        return render_template("about.html")
+
+    from . import db
+    db.init_app(app)
+
+    from . import routes
+    app.register_blueprint(routes.bp)
+    app.add_url_rule('/', endpoint='index')
+
     from flask_bootstrap import Bootstrap
     bootstrap = Bootstrap(app)
-
-    # register the database commands
-    # from flaskr import db
-
-    # db.init_app(app)
-
-    # apply the blueprints to the app
-    # from flaskr import auth, blog
-
-    # app.register_blueprint(auth.bp)
-    # app.register_blueprint(blog.bp)
-
-    # from app import routes
-    # from app import views,models
 
     return app

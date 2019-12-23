@@ -1,15 +1,22 @@
-from app import app
-from flask import render_template
+from flask import (
+    Blueprint, flash, g, redirect, render_template, request, url_for
+)
+from werkzeug.exceptions import abort
+
+from app.db import get_db
 
 from ItViec import ItViec
 
+bp = Blueprint('itviec', __name__)
 
-@app.route("/")
+
+
+@bp.route("/")
 def index():
     return render_template("front_page.html")
 
 
-@app.route("/jobs")
+@bp.route("/jobs")
 def jobs():
     itviec = ItViec()
     jids = itviec.get_latest_jobids()
@@ -17,7 +24,7 @@ def jobs():
     return render_template("jobs.html", jobs=jobs)
 
 
-@app.route("/jobs/<int:j_id>/")
+@bp.route("/jobs/<int:j_id>/")
 def job(j_id):
     itviec = ItViec()
     j = itviec.get_job(j_id)
@@ -26,35 +33,15 @@ def job(j_id):
     return render_template("job.html", job_id=j_id, j=j)
 
 
-@app.route("/hcm")
+@bp.route("/hcm")
 def hcm():
     return render_template("hcm.html")
 
 
-@app.route("/tags")
+@bp.route("/tags")
 def tags():
     itviec = ItViec()
     tags_count = itviec.get_tags_count()
     return render_template("tags.html", tags=tags_count)
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
-
-@app.route("/members/<string:m_name>/")
-def getMember(m_name):
-    # return name #</string:name>
-    return render_template("front_page.html", name=m_name)
-
-
-@app.errorhandler(404)
-def page_not_found(e):
-    # note that we set the 404 status explicitly
-    return render_template("404.html"), 404
-
-
-@app.route("/config")
-def getConfig():
-    return app.config
