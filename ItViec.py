@@ -13,23 +13,22 @@
 #  - Storage (I/O)
 #  - Scraper (Input)
 #
-# Classes:
-# - ITViec
-# - Section
-# - Page
-# - Job
-
-# from ScrapRobot import *
-from storage import SQLiteStorage
+#  Classes:
+#  - ITViec
+#  - Section
+#  - Page
+#  - Job
 
 import requests
 from bs4 import BeautifulSoup, Comment
 
-import configparser
+from flask import Config
+from config import BASE_DIR, set_app_config
 
-base_url = "https://itviec.com"
+from storage import SQLiteStorage
 
-DEBUG = True
+conf = {}
+req_http_headers = {}
 
 # Util functions ########################################
 
@@ -52,20 +51,15 @@ def lm(s, *args):
 
 
 def msg(s):
-    if DEBUG:
+    if conf['DEBUG']:
         print(s)
 
 
-def fetch_url(url, headers):
+def fetch_url(url):
     # Fetch page
     # print('Fetching url {}'.format(url)) # DEBUG
 
-    response = None
-
-    if headers is None:
-        response = requests.get(url)
-    else:
-        response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=req_http_headers)
 
     # Check response code
     if response.status_code != 200:
@@ -77,24 +71,39 @@ def fetch_url(url, headers):
 
 
 def get_config(class_name):
+    # if class_name is None:
+    #     raise Exception("Class name not defined in get_config")
 
-    if class_name is None:
-        raise Exception("Class name not defined in get_config")
+    config = Config(BASE_DIR)
+    set_app_config(config)
+    # config.from_pyfile(os.path.join(INSTANCE_DIR, CONFIG_FILENAME))
+    # print(config)
 
-    config = configparser.ConfigParser()
-    config.read_file(open(class_name + ".conf"))
+    # Previous
+    # config = configparser.ConfigParser()
+    # config.read_file(open(class_name + ".conf"))
 
-    conf = {}
-    conf["url"] = config[class_name]["url"]
-    # conf[pages] = config.getint(class_name,'pages')
+    # res = {}
+    # res["url"] = config[class_name]["url"]
 
-    conf["headers"] = dict(config.items("headers"))
+    # res[pages] = config.getint(class_name,'pages')
 
-    return conf
+    # res["headers"] = dict(config.items("headers"))
+
+    # return res
+    return config
 
 
 conf = get_config("ItViec")
 
+
+def collect_http_headers(conf):
+    for k, v in conf.get_namespace('HTTP_HEADER_').items():
+        req_http_headers[k.replace("_", "-").capitalize()] = v
+    return req_http_headers
+
+
+req_http_headers = collect_http_headers(conf)
 
 # Section block #######################################
 
@@ -110,13 +119,12 @@ class ITViecSection:
             .format(self.ID, self.name, self.url)
 
     def __iter__(self):
-        # Todo: Fix headers variable
-        return ItViecSectionPageIterator(self.url, conf["headers"])
+        return ItViecSectionPageIterator(self.url)
 
 
 def _init_ITViecSections():
 
-    url = conf["url"]
+    url = conf["URL"]
 
     CITIES = {
         "ho-chi-minh-hcm": "Ho Chi Minh",
@@ -138,10 +146,9 @@ def _init_ITViecSections():
 
 
 class ItViecSectionPageIterator:
-    def __init__(self, url, headers):
+    def __init__(self, url):
 
         self.url = url
-        self.headers = headers
 
     def __next__(self):
 
@@ -150,7 +157,7 @@ class ItViecSectionPageIterator:
             raise StopIteration("Error: No URL for current iteration")
 
         # Fetch page
-        response = fetch_url(self.url, self.headers)
+        response = fetch_url(self.url)
         resp_json = response.json()
 
         # Key:  suggestion
@@ -242,9 +249,6 @@ class JobIteratorInPage:
 # Job block ############################################
 class Job:
     def __init__(self, param):
-
-        self.base_url = base_url
-
         self.id = int(param["id"])
         self.last_update = param["last_update"]
         self.title = param["title"]
@@ -280,10 +284,10 @@ class Job:
         # DEBUG #
 
     def get_url(self):
-        return self.base_url + self.url
+        return conf['BASE_URL'] + self.url
 
     def get_employer_url(self):
-        return self.base_url + self.employer_url
+        return conf['BASE_URL'] + self.employer_url
 
     def has_full_desc(self):
         defined = self.hasAttribute("f_desc")
@@ -732,17 +736,6 @@ class ItViec:
             -
 
         """
-
-        # Config ######################
-        class_name = __name__
-
-        config = configparser.ConfigParser()
-        config.read_file(open(class_name + ".conf"))
-
-        self.url = config[class_name]["url"]
-        self.base_url = config[class_name]["base_url"]
-        self.headers = dict(config.items("headers"))
-        # End of config ################
 
         self.sections = _init_ITViecSections()
 

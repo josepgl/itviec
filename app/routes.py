@@ -1,14 +1,7 @@
-from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for
-)
-from werkzeug.exceptions import abort
-
-from app.db import get_db
-
+from flask import Blueprint, render_template
 from ItViec import ItViec
 
 bp = Blueprint('itviec', __name__)
-
 
 
 @bp.route("/")
@@ -43,5 +36,3 @@ def tags():
     itviec = ItViec()
     tags_count = itviec.get_tags_count()
     return render_template("tags.html", tags=tags_count)
-
-
