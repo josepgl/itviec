@@ -739,7 +739,7 @@ class ItViec:
 
         self.sections = _init_ITViecSections()
 
-        self.db = SQLiteStorage(__name__)
+        self.db = SQLiteStorage(__name__, conf['DATABASE'])
         self.db.open()
         self.db.create(self.SCHEMAS)
 

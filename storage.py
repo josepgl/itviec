@@ -23,9 +23,9 @@ class SQLiteStorage:
     cur = None
     tags = None  # Dict {}
 
-    def __init__(self, name):
+    def __init__(self, name, location):
         self.name = name
-        self.db_name = self.name + ".sqlite"
+        self.location = location
 
     def __del__(self):
         self.cur = None
@@ -36,7 +36,7 @@ class SQLiteStorage:
     def open(self):
 
         try:
-            self.con = sqlite3.connect(self.db_name)
+            self.con = sqlite3.connect(self.location)
             # ~ self.con.row_factory = sqlite3.Row
             self.cur = self.con.cursor()
             # ~ self.cur.execute('SELECT SQLITE_VERSION()')
