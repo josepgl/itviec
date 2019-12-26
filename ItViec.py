@@ -19,20 +19,20 @@
 #  - Page
 #  - Job
 
+import json
 import requests
+
+import flask
 from bs4 import BeautifulSoup, Comment
 
-from flask import Config
-from config import BASE_DIR, set_app_config
-
+import config as Config
 from storage import SQLiteStorage
 
 conf = {}
 req_http_headers = {}
 
-# Util functions ########################################
 
-
+# Util functions ##########################################
 def first_line(s):
     return str(s).splitlines()[0]
 
@@ -45,7 +45,7 @@ def log(s, *args):
     print("ItViec " + s.format(*args))
 
 
-def lm(s, *args):
+def log_msg(s, *args):
     s = "{}:{}() " + s
     print(s.format(*args))
 
@@ -70,12 +70,12 @@ def fetch_url(url):
     return response
 
 
-def get_config(class_name):
+def get_config():
     # if class_name is None:
     #     raise Exception("Class name not defined in get_config")
 
-    config = Config(BASE_DIR)
-    set_app_config(config)
+    config = flask.Config(Config.BASE_DIR)
+    Config.set_app_config(config)
     # config.from_pyfile(os.path.join(INSTANCE_DIR, CONFIG_FILENAME))
     # print(config)
 
@@ -94,7 +94,7 @@ def get_config(class_name):
     return config
 
 
-conf = get_config("ItViec")
+conf = get_config()
 
 
 def collect_http_headers(conf):
@@ -105,9 +105,8 @@ def collect_http_headers(conf):
 
 req_http_headers = collect_http_headers(conf)
 
-# Section block #######################################
 
-
+# Section #################################################
 class ITViecSection:
     def __init__(self, name, ID, url):
         self.name = name
@@ -193,12 +192,7 @@ class ItViecSectionPageIterator:
         return page
 
 
-# End of Section block ##################################
-
-
-# Page class ###########################################
-
-
+# Page ####################################################
 class Page:
     def __init__(self, url, content, prev_p, next_p):
         self.url = url
@@ -243,10 +237,7 @@ class JobIteratorInPage:
         return job
 
 
-# End of Page class #####################################
-
-
-# Job block ############################################
+# Job #####################################################
 class Job:
     def __init__(self, param):
         self.id = int(param["id"])
@@ -332,9 +323,6 @@ class Job:
         return f_desc
 
 
-# End of Job Class
-
-
 def parse_job(job_block):
     """
     Extract job details from html and build a dictionary to create a Job
@@ -389,12 +377,7 @@ def parse_job(job_block):
     return j
 
 
-# End of Job block #####################################
-
-
-# Jobs block ############################################
-
-
+# Jobs ####################################################
 class Jobs:
     def __init__(self, db):
         self.db = db
@@ -414,25 +397,24 @@ class Jobs:
         # return len(self.get_ids())
 
 
-# End of Company block #####################################
-
-
-# Company block ############################################
-
-
-class Company:
+# Employer ################################################
+class Employer:
     def __init__(self):
         pass  # TODO
 
-    def parse_from_url(url):
-        """static method"""
-        response = fetch_url(url, None)
+    @classmethod
+    def request_with_code(self, code):
+        employer_url = Config.TEMPLATE_EMPLOYER_URL.format(code)
+        # print("employer_url: " + employer_url)
+        # print("TEMPLATE_EMPLOYER_URL: " + Config.TEMPLATE_EMPLOYER_URL)
+        # return None
+
+        response = fetch_url(employer_url)
 
         # Company dict
         c = {}
 
         bs = BeautifulSoup(response.text, "html.parser")
-        # div = bs.div
 
         # ###### #
         # Header #
@@ -482,10 +464,13 @@ class Company:
 
         # Overtime: div::overtime
         overtime_div = header_tag.find("div", class_="overtime")
-        # print(first_line(overtime))
-        overtime_span = overtime_div.find("span")
-        c["overtime"] = overtime_span.string.strip()
-        msg("Company country: '{}'".format(c["overtime"]))
+        # print(first_line(overtime_div))
+        if overtime_div:
+            overtime_span = overtime_div.find("span")
+            c["overtime"] = overtime_span.string.strip()
+        else:
+            c["overtime"] = None
+        msg("Overtime: '{}'".format(c["overtime"]))
 
         # ###########
         # Container #
@@ -520,14 +505,14 @@ class Company:
         # Panel body
         # panel_b_div = col_left.find("div", class_="panel-body")
         # paragraph1 = panel_b_div.find("div", class_="paragraph")\
-            # .contents[1].contents[0]
+        #     .contents[1].contents[0]
         # paragraph2 = paragraph1.contents[0]
         # msg("Paragraph class: " + class_name(paragraph2))
         # msg("Paragraph: " + str(paragraph2))
 
         # Panel jobs: panel panel-default jobs
-        panel_jobs_div = col_left.find("div", 
-            class_="panel panel-default jobs")
+        panel_jobs_div = col_left.find("div",
+                                       class_="panel panel-default jobs")
         panel_body_div = panel_jobs_div.find("div", class_="panel-body")
         jobs = []
         for div in panel_body_div.find_all("div", class_="job"):
@@ -549,10 +534,12 @@ class Company:
         # Recommended
         # #########################
 
+        employer_review_url = Config.TEMPLATE_EMPLOYER_REVIEW_URL.format(code)
+
         # ##########################################
         # Reviews
         # ##########################################
-        rev_resp = fetch_url(url + "/review", None)
+        rev_resp = fetch_url(employer_review_url)
         print(rev_resp.request.url)
         bs = BeautifulSoup(rev_resp.text, "html.parser")
         # cr_div = bs.find('div',class_="company-review")
@@ -577,31 +564,33 @@ class Company:
 
         # stars: panel panel-default
         panel_div = col_left.find("div", class_="panel panel-default")
+        rate_div = panel_div.find("p", class_="start-point")
+        if rate_div:
+            r['overall_rat'] = float(rate_div.string.split(" ")[0])
+            msg("Rating overall: " + str(r['overall_rat']))
 
-        overall_rat = float(
-            panel_div.find("p", class_="start-point").string.split(" ")[0]
-        )
-        msg("Rating overall: " + str(overall_rat))
+            # recommended
+            r['recomm'] = int(panel_div.find("td")["data-rate"])
+            msg("Recommended: " + str(r['recomm']))
 
-        # recommended
-        recomm = int(panel_div.find("td")["data-rate"])
-        msg("Recommended: " + str(recomm))
+            # ratings: table: ratings-specific
+            ratings_tbl = col_left.find("table", class_="ratings-specific")
 
-        # ratings: table: ratings-specific
-        ratings_tbl = col_left.find("table", class_="ratings-specific")
+            for row in ratings_tbl.find_all("tr"):
+                # msg(first_line(row))
+                row.contents
+                # msg("row.contents: " + str(row.contents) )
 
-        for row in ratings_tbl.find_all("tr"):
-            # msg(first_line(row))
-            row.contents
-            # msg("row.contents: " + str(row.contents) )
+                td_name = row.contents[1].span.string
+                td_rate = row.contents[5].string.split()[0]
 
-            td_name = row.contents[1].span.string
-            td_rate = row.contents[5].string.split()[0]
+                # msg("td_name: " + str(td_name) )
+                # msg("td_rate: " + str(td_rate) )
 
-            # msg("td_name: " + str(td_name) )
-            # msg("td_rate: " + str(td_rate) )
-
-            r[td_name] = td_rate
+                r[td_name] = td_rate
+        else:
+            r['overall_rat'] = None
+            r['recomm'] = None
 
         print(r)
 
@@ -625,7 +614,7 @@ class Company:
             print("Date: " + date)
             # r.details-review
             # detail_t = rev_t.contents[3]  # find('div',class_="date")\
-                # .string.strip()
+            #     .string.strip()
             # print("Detail tag: " + first_line(detail_t))
 
             # for child in detail_t.contents:
@@ -643,22 +632,23 @@ class Company:
             # comp_l = compose.strip().split("\n\n\n")
             # print("grandchild string: " + str(comp_l))
 
-            # return
+        return c
 
 
-class Companies:
+class Employers:
     def __init__(self):
         pass  # TODO
 
+    @classmethod
+    def request_all_names(self):
+        response = fetch_url(Config.EMPLOYERS_JSON_URL)
 
-# End of Company block #####################################
-
-
-# ########################################################
-# ItViec #################################################
-# ########################################################
+        return json.loads(response.text)
 
 
+# #########################################################
+# ItViec ##################################################
+# #########################################################
 class ItViec:
     """
     - On __init__:
@@ -744,9 +734,9 @@ class ItViec:
         self.db.create(self.SCHEMAS)
 
         n_j = self.db.count_rows_in_table("Jobs")
-        lm("Jobs in database: {}", __name__, "init", n_j)
+        log_msg("Jobs in database: {}", __name__, "init", n_j)
         n_t = self.db.count_rows_in_table("Tags")
-        lm("Tags in database: {}", __name__, "init", n_t)
+        log_msg("Tags in database: {}", __name__, "init", n_t)
 
         # print(self.db.get_schemas())
         self.tags = self.db.get_tags()  # required

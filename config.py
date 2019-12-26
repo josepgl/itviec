@@ -6,6 +6,10 @@ INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
 CONFIG_FILENAME = "config.py"
 DATABASE_FILENAME = "ItViec.sqlite"
 
+EMPLOYERS_JSON_URL = "https://itviec.com/api/v1/employers.json"
+TEMPLATE_EMPLOYER_URL = "https://itviec.com/companies/{}"
+TEMPLATE_EMPLOYER_REVIEW_URL = "https://itviec.com/companies/{}/review"
+
 
 class Config:
     DEBUG = True
@@ -14,7 +18,7 @@ class Config:
     URL = "https://itviec.com/it-jobs"
 
     DATABASE = os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
-    DATABASE_URI = "sqlite://" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
+    # DATABASE_URI = "sqlite://" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
 
     BOOTSTRAP_SERVE_LOCAL = True
 
@@ -23,6 +27,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    # DATABASE = ":memory:"
 
 
 class TestingConfig(Config):

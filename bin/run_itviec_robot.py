@@ -41,6 +41,14 @@ j = ItViec.Job(
 robot = ItViec.ItViec()
 
 
+def print_query(query):
+    print()
+    print(query)
+    print()
+
+    for item in robot.run_query(query):
+        print(item)
+
 # Single job example ###########################
 # robot.add_job(j)
 # #################################################
@@ -81,12 +89,6 @@ robot = ItViec.ItViec()
 # print("END OF DUMP")
 # #####################################
 
-
-# job = robot.get_job(60787)
-# print(j)
-# print(j.get_employer_url())
-
-# company = ItViec.Company.parse_from_url( j.get_employer_url() )
 
 
 # print(job.get_full_desc())
@@ -141,13 +143,9 @@ robot = ItViec.ItViec()
 # query = "SELECT Jobs.Id FROM Jobs WHERE Jobs.Id = 60600 "
 
 
-def print_query(query):
-    print()
-    print(query)
-    print()
 
-    for item in robot.run_query(query):
-        print(item)
+
+
 
 
 # query = "SELECT Id, Salary FROM Jobs"
@@ -156,8 +154,8 @@ def print_query(query):
 # query = "UPDATE Jobs SET Salary = replace( Salary, 'https://itviec.com', '' ) WHERE Salary LIKE 'https://itviec.com%';"
 # print(robot.run_query(query))
 
-query = "SELECT Id, Salary FROM Jobs"
-print_query(query)
+# query = "SELECT Id, Salary FROM Jobs"
+# print_query(query)
 
 # Performance test ###
 # for _ in range(100000):
@@ -171,5 +169,20 @@ print_query(query)
 
 # update_itviec_db(robot)
 # robot.update_db()
+
+
+# Employer ###########################
+# job = robot.get_job(61500)
+# print(job)
+# print([job.get_employer_url()])
+# company = ItViec.Employer.from_url(job.get_employer_url())
+# print(company)
+
+# Employers
+#print(len(ItViec.Employers.request_all_names()))
+ItViec.Employer.request_with_code('saf')
+
+
+
 
 robot.close()
