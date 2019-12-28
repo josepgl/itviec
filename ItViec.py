@@ -404,12 +404,15 @@ class Employer:
 
     @classmethod
     def request_with_code(self, code):
-        employer_url = Config.TEMPLATE_EMPLOYER_URL.format(code)
+        emp = {
+            'code': code,
+            'url': Config.TEMPLATE_EMPLOYER_URL.format(code)
+        }
         # print("employer_url: " + employer_url)
         # print("TEMPLATE_EMPLOYER_URL: " + Config.TEMPLATE_EMPLOYER_URL)
         # return None
 
-        response = fetch_url(employer_url)
+        response = fetch_url(emp['url'])
 
         # Company dict
         c = {}
@@ -424,53 +427,53 @@ class Employer:
         # Logo: div::logo-container
         logo_container_tag = header_tag.find("div", class_="logo-container")
         logo_tag = logo_container_tag.find("img")
-        c["logo"] = logo_tag["data-src"]
-        msg("Logo: '{}'".format(c["logo"]))
+        emp["logo"] = logo_tag["data-src"]
+        msg("Logo: '{}'".format(emp["logo"]))
 
         # c name-and-info
         # name: h1::title
         name_tag = header_tag.find("h1", class_="title")
-        c["name"] = name_tag.string.strip()
-        msg("Company name: '{}'".format(c["name"]))
+        emp["name"] = name_tag.string.strip()
+        msg("Company name: '{}'".format(emp["name"]))
 
         # location: location
         nni_tag = header_tag.find("div", class_="name-and-info")
         location_tag = nni_tag.find("span")
-        c["location"] = location_tag.contents[2].strip()
-        msg("Company location: '{}'".format(c["location"]))
+        emp["location"] = location_tag.contents[2].strip()
+        msg("Company location: '{}'".format(emp["location"]))
 
         # Industry: span::gear-icon
         industry_tag = header_tag.find("span", class_="gear-icon")
-        c["industry"] = industry_tag.string.strip()
-        msg("Company industry: '{}'".format(c["industry"]))
+        emp["industry"] = industry_tag.string.strip()
+        msg("Company industry: '{}'".format(emp["industry"]))
 
         # Employees: span::group-icon
         employees_tag = header_tag.find("span", class_="group-icon")
-        c["employees"] = employees_tag.string.strip()
-        msg("Company employees: '{}'".format(c["employees"]))
+        emp["employees"] = employees_tag.string.strip()
+        msg("Company employees: '{}'".format(emp["employees"]))
 
         # Country: div::country span::name
         country_div = header_tag.find("div", class_="country")
         country_span = country_div.find("span")
-        c["country"] = country_span.string.strip()
-        msg("Company country: '{}'".format(c["country"]))
+        emp["country"] = country_span.string.strip()
+        msg("Company country: '{}'".format(emp["country"]))
 
         # Working days: div::working-date span
         w_days_div = header_tag.find("div", class_="working-date")
         # print(first_line(w_days))
         w_days_span = w_days_div.find("span")
-        c["working-date"] = w_days_span.string.strip()
-        msg("Company working days: '{}'".format(c["working-date"]))
+        emp["working-days"] = w_days_span.string.strip()
+        msg("Company working days: '{}'".format(emp["working-days"]))
 
         # Overtime: div::overtime
         overtime_div = header_tag.find("div", class_="overtime")
         # print(first_line(overtime_div))
         if overtime_div:
             overtime_span = overtime_div.find("span")
-            c["overtime"] = overtime_span.string.strip()
+            emp["overtime"] = overtime_span.string.strip()
         else:
-            c["overtime"] = None
-        msg("Overtime: '{}'".format(c["overtime"]))
+            emp["overtime"] = None
+        msg("Overtime: '{}'".format(emp["overtime"]))
 
         # ###########
         # Container #
@@ -490,25 +493,27 @@ class Employer:
         # Navigation
         # website
         nav = col_left.find("ul", class_="navigation")
-        c["url"] = nav.find("a", class_="ion-android-open")["href"]
-        msg("Website: " + c["url"])
+        emp["website"] = nav.find("a", class_="ion-android-open")["href"]
+        msg("Website: " + emp["website"])
 
         # facebook
         # TODO
 
         # Panel header
         panel_div = col_left.find("div", class_="panel panel-default")
-        header = panel_div.find("h3", class_="panel-title headline")\
+        emp["panel"] = panel_div
+        msg("Panel: " + str(c["panel"]))
+        emp["header"] = panel_div.find("h3", class_="panel-title headline")\
             .string.strip()
-        msg("Header: " + header)
+        msg("Header: " + emp["header"])
 
         # Panel body
-        # panel_b_div = col_left.find("div", class_="panel-body")
-        # paragraph1 = panel_b_div.find("div", class_="paragraph")\
-        #     .contents[1].contents[0]
-        # paragraph2 = paragraph1.contents[0]
-        # msg("Paragraph class: " + class_name(paragraph2))
-        # msg("Paragraph: " + str(paragraph2))
+        panel_b_div = col_left.find("div", class_="panel-body")
+        paragraph1 = panel_b_div.find("div", class_="paragraph")\
+            .contents[1].contents[0]
+        paragraph2 = paragraph1.contents[0]
+        msg("Paragraph class: " + class_name(paragraph2))
+        msg("Paragraph: " + str(paragraph2))
 
         # Panel jobs: panel panel-default jobs
         panel_jobs_div = col_left.find("div",
