@@ -10,6 +10,8 @@ EMPLOYERS_JSON_URL = "https://itviec.com/api/v1/employers.json"
 TEMPLATE_EMPLOYER_URL = "https://itviec.com/companies/{}"
 TEMPLATE_EMPLOYER_REVIEW_URL = "https://itviec.com/companies/{}/review"
 
+SQLALCHEMY_DATABASE_URI = "sqlite:////home/jose/projects/itviec/instance/sqlalchemy.sqlite"
+
 
 class Config:
     DEBUG = True
@@ -18,7 +20,10 @@ class Config:
     URL = "https://itviec.com/it-jobs"
 
     DATABASE = os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
-    # DATABASE_URI = "sqlite://" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
+    # SQLALCHEMY_DATABASE_URI = "sqlite:////home/jose/projects/itviec/instance/sqlalchemy.sqlite")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     BOOTSTRAP_SERVE_LOCAL = True
 
@@ -28,6 +33,7 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     # DATABASE = ":memory:"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_DIR, 'sqlalchemy.sqlite')
 
 
 class TestingConfig(Config):
@@ -43,8 +49,11 @@ config_by_name = dict(
     dev=DevelopmentConfig, test=TestingConfig, prod=ProductionConfig
 )
 
+req_http_headers = dict()
+
 
 def set_app_config(config, test_config=None):
+    global req_http_headers
     if test_config is None:
         # load the instance config, if it exists, when not testing
         config_name = os.getenv("FLASK_CONFIGURATION", "default")
@@ -62,7 +71,17 @@ def set_app_config(config, test_config=None):
         # load the test config if passed in
         config.from_mapping(test_config)
 
+    req_http_headers = collect_http_headers(config)
+
     # Debugging
     # import json
     # conf_json = json.dumps(app.config, indent=4, sort_keys=True, default=str)
     # print(conf_json)
+
+def collect_http_headers(conf):
+    for k, v in conf.get_namespace('HTTP_HEADER_').items():
+        req_http_headers[k.replace("_", "-").capitalize()] = v
+    return req_http_headers
+
+
+# req_http_headers = collect_http_headers(conf)

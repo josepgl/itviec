@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-sys.path.append(os.path.abspath(os.curdir))
+# import os
+# import sys
+# sys.path.append(os.path.abspath(os.curdir))
 
-import ItViec
+from . import ItViec
 
 
 def update_itviec_db(robot):
@@ -24,7 +24,7 @@ def update_itviec_db(robot):
 
 
 if __name__ == "__main__":
-
+    exit()
     robot = ItViec.ItViec()
     update_itviec_db(robot)
     robot.close()
