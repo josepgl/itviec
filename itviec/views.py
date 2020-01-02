@@ -2,14 +2,19 @@ import click
 from flask import Blueprint, render_template
 
 import itviec.ItViec as ItViec
-import itviec.models
+from itviec.models import Job, Employer
+from itviec.db import db_session
+
+from pprint import pprint
 
 bp = Blueprint('itviec', __name__, cli_group=None)
 
 
 @bp.route("/")
 def index():
-    return render_template("front_page.html")
+    # return render_template("front_page.html")
+    jobs = db_session.query(Job).order_by(Job.id.desc()).limit(50)
+    return render_template("jobs.html", jobs=jobs)
 
 
 @bp.route("/jobs")
@@ -75,29 +80,33 @@ def update_db():
 @bp.cli.command('test-job')
 @click.argument('jid')
 def test_job(jid):
-    print(itviec.models.Job.request_job(jid))
+    print(Job.request_job(jid))
 
 
 @bp.cli.command('test-emp')
 @click.argument('code')
 def test_emp(code):
-    print(itviec.models.Employer.request_employer(code))
+    employer = Employer.request_employer(code)
+    # print(employer)
+    pprint(employer.__dict__)
 
 
 @bp.cli.command('test-emp-feed')
 # @click.argument('code')
 def test_emp_feed():
     feed = itviec.parsers.EmployerFeed()
-    print("feed: " + str(feed))
+    # print("feed: " + str(feed))
     print("feed.len: " + str(len(feed)))
-    print("feed class: " + str(feed.__class__))
+    # print("feed class: " + str(feed.__class__))
     # print("feed response.text: " + feed.response.text)
-    print("feed.json class: " + str(feed.json.__class__))
+    # print("feed.json class: " + str(feed.json.__class__))
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
         print("Employer code: {}".format(emp_code))
-        emp_instance = itviec.models.Employer.request_employer(emp_code)
-        print(emp_instance)
+        emp_instance = Employer.request_employer(emp_code)
+        emp_sum = "Jobs: {} Reviews: {}"
+        print(emp_instance, emp_sum.format(len(emp_instance.jobs), len(emp_instance.reviews)))
+        print("<------------------------------------>")
 
 
 @bp.cli.command('test-jobs-feed')
@@ -105,9 +114,25 @@ def test_jobs_feed():
     feed = itviec.parsers.JobsFeed()
 
     for job_tag in feed.job_tags():
-        job = itviec.models.Job.from_tag(job_tag)
+        job = Job.from_tag(job_tag)
 
         # print(str(job.__class__))
         print(job.last_update, job, "@", job.employer_code)
         print(job.address)
         print(job.tags)
+
+
+@bp.cli.command('test-add-jobs')
+def test_add_jobs():
+    feed = itviec.parsers.JobsFeed()
+
+    for job_tag in feed.job_tags():
+        job = Job.from_tag(job_tag)
+
+        # print(str(job.__class__))
+        print(job.last_update, job, "@", job.employer_code)
+        # print(job.address)
+        # print(job.tags)
+
+        # db_session.add(job)
+        # db_session.commit()

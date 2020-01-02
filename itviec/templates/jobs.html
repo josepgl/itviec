@@ -14,10 +14,10 @@
           <a class="text-dark" target="_blank" href="http://www.itviec.com{{j.url}}">{{j.title}} - {{j.id}}</a>
         </h4>
         <h5 class="card-subtitle pb-4">
-          <a class="text-secondary" target="_blank" href="http://www.itviec.com{{j.employer_url}}">{{j.employer}}</a>
+          <a class="text-secondary" target="_blank" href="http://www.itviec.com{{j.employer_url}}">{{j.employer_code}}</a>
         </h5>
 
-        <p class="card-text">{{j.desc}}</p>
+        <p class="card-text">{{j.description}}</p>
 
         <div class="row pb-3">
           <div class="col-sm-2">Salary:</div>
@@ -27,28 +27,23 @@
           <div class="col-sm-2">Location:</div>
           <div class="col-sm">
             <ul class="list-inline">
+            {% for a in j.address %}
               <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{j.address[0]}}</div>
+                <div class="btn btn-outline-dark btn-sm disabled">{{a.name}}</div>
               </li>
-              <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{j.address[1]}}</div>
-              </li>
-            </ul>
+            {% endfor %}
+           </ul>
           </div>
         </div>
         <div class="row">
           <div class="col-sm-2">Tags:</div>
           <div class="col-sm">
             <ul class="list-inline">
+            {% for tag in j.tags %}
               <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[0]}}</div>
+                <div class="btn btn-outline-dark btn-sm disabled">{{tag.name}}</div>
               </li>
-              <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[1]}}</div>
-              </li>
-              <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{j.tags[2]}}</div>
-              </li>
+            {% endfor %}
             </ul>
           </div>
         </div>

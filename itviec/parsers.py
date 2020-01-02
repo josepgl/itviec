@@ -5,51 +5,71 @@ import config as Config
 
 
 def parse_employer(html, code):
+    '''
+    - Div: company-page
+        - Div::cover-images-desktop
+        - Div::headers hidden-xs: Info
+        - Div::row company-container
+            - Div::col-md-8 col-left
+                - UL::navigation
+                - Last update comment
+                - Div::panel panel-default: Description
+                - Jobs comment
+                - Div::panel panel-default jobs: Jobs
+                - Last update comment
+                - Div::panel panel-default: Why
+                - Our people comment
+                - Location comment
+                - Div::panel panel-default: Location
+            - Div::col-md-4 col-right: Reviews info
+    '''
     bs = BeautifulSoup(html, "html.parser")
 
     emp = {
         'code': code,
-        'url': Config.TEMPLATE_EMPLOYER_URL.format(code)
+        # 'url': Config.TEMPLATE_EMPLOYER_URL.format(code)
     }
 
-    # ###### #
-    # Header #
-    # ###### #
-    header_tag = bs.div.find(class_="company-page")
+    company_tag = bs.div.find(class_="company-page")
+
+    # ############################# #
+    # Company general info / Header #
+    # ############################# #
+    header_tag = company_tag.find("div", class_="headers hidden-xs")
 
     # Logo: div::logo-container
     logo_container_tag = header_tag.find("div", class_="logo-container")
     logo_tag = logo_container_tag.find("img")
     emp["logo"] = logo_tag["data-src"]
-    msg("Logo: '{}'".format(emp["logo"]))
+    # msg("Logo: '{}'".format(emp["logo"]))
 
     # c name-and-info
     # name: h1::title
     name_tag = header_tag.find("h1")
     emp["name"] = name_tag.string.strip()
-    msg("Company name: '{}'".format(emp["name"]))
+    # msg("Company name: '{}'".format(emp["name"]))
 
     # location: location
     nni_tag = header_tag.find("div", class_="name-and-info")
     location_tag = nni_tag.find("span")
     emp["location"] = location_tag.contents[2].strip()
-    msg("Company location: '{}'".format(emp["location"]))
+    # msg("Company location: '{}'".format(emp["location"]))
 
     # Industry: span::gear-icon
     industry_tag = header_tag.find("span", class_="gear-icon")
     emp["industry"] = industry_tag.string.strip()
-    msg("Company industry: '{}'".format(emp["industry"]))
+    # msg("Company industry: '{}'".format(emp["industry"]))
 
     # Employees: span::group-icon
     employees_tag = header_tag.find("span", class_="group-icon")
     emp["employees"] = employees_tag.string.strip()
-    msg("Company employees: '{}'".format(emp["employees"]))
+    # msg("Company employees: '{}'".format(emp["employees"]))
 
     # Country: div::country span::name
     country_div = header_tag.find("div", class_="country")
     country_span = country_div.find("span")
     emp["country"] = country_span.string.strip()
-    msg("Company country: '{}'".format(emp["country"]))
+    # msg("Company country: '{}'".format(emp["country"]))
 
     # Working days: div::working-date span
     w_days_div = header_tag.find("div", class_="working-date")
@@ -60,7 +80,7 @@ def parse_employer(html, code):
         emp["working_days"] = w_days_span.string.strip()
     else:
         emp["working_days"] = None
-    msg("Company working days: '{}'".format(emp["working_days"]))
+    # msg("Company working days: '{}'".format(emp["working_days"]))
 
     # Overtime: div::overtime
     overtime_div = header_tag.find("div", class_="overtime")
@@ -70,34 +90,26 @@ def parse_employer(html, code):
         emp["overtime"] = overtime_span.string.strip()
     else:
         emp["overtime"] = None
-    msg("Overtime: '{}'".format(emp["overtime"]))
+    # msg("Overtime: '{}'".format(emp["overtime"]))
 
-    # ###########
-    # Container #
-    # ###########
+    # ###################### #
+    # Container Left Columnn #
+    # ###################### #
 
-    cc_div = bs.div.find(class_="row company-container")
-    # print(first_line(cc_div))
-
-    # col_right = cc_div.find(class_="col-md-4 col-right")
-    # print(first_line(col_right))
-
-    # Left col
-    col_left = cc_div.find(class_="col-md-8 col-left")
+    left_column = company_tag.find(class_="col-md-8 col-left")
     # print(first_line(col_left))
 
     # Panel description
     # Navigation
     # website
-    nav = col_left.find("ul", class_="navigation")
+    nav = left_column.find("ul", class_="navigation")
     emp["website"] = nav.find("a", class_="ion-android-open")["href"]
-    msg("Website: " + emp["website"])
+    # msg("Website: " + emp["website"])
 
-    # facebook
-    # TODO
+    # TODO: facebook
 
     # Panel header
-    panel_div = col_left.find("div", class_="panel panel-default")
+    panel_div = left_column.find("div", class_="panel panel-default")
     emp["panel"] = panel_div
     # msg("Panel: " + str(emp["panel"]))
     # emp["header"] = panel_div.find("h3", class_="panel-title headline")\
@@ -113,28 +125,32 @@ def parse_employer(html, code):
     # msg("Paragraph: " + str(paragraph2))
 
     # Panel jobs: panel panel-default jobs
-    panel_jobs_div = col_left.find("div",
-                                   class_="panel panel-default jobs")
-    panel_body_div = panel_jobs_div.find("div", class_="panel-body")
-    jobs = []
-    for div in panel_body_div.find_all("div", class_="job"):
-        if class_name(div) != "Tag":
-            continue
-        jid = int(div["id"][4:])
-        jobs.append(jid)
-    msg("Jobs: " + str(jobs))
+    panel_jobs_div = left_column.find("div",
+                                      class_="panel panel-default jobs")
+    # msg("Jobs: " + str(panel_jobs_div))
 
-    # Panel why
+    # emp["job_ids"] = []
+    # if panel_jobs_div is not None:
+    #     panel_body_div = panel_jobs_div.find("div", class_="panel-body")
+    #     for div in panel_body_div.find_all("div", class_="job"):
+    #         if class_name(div) != "Tag":
+    #             continue
+    #         jid = int(div["id"][4:])
+    #         emp["job_ids"].append(jid)
 
-    # Panel location
+    # msg("Jobs: " + str(jobs))
 
-    # ############# NO ########
+    # TODO: Panel why
+    # TODO: Panel location
+
+    # Ratings Stats ###########
     # Right col
 
     # Panel ratings
     # Stars
     # Recommended
     # #########################
+    # emp["reviews"] = None
 
     return emp
 
@@ -150,36 +166,36 @@ def parse_employer_review(html):
     # msg('')
     # cc_div = bs.find('div',class_="row company-container")
 
-    # Left col
-    col_left = bs.find("div", class_="col-md-8 col-left")
+    # Left column
+    left_column = bs.find("div", class_="col-md-8 col-left")
     # print(first_line(col_left))
 
     # ratings and reviews
     r_n_r = {}
 
     # number of reviews
-    nav = col_left.find("ul", class_="navigation")
+    nav = left_column.find("ul", class_="navigation")
     count_tag = nav.find_all("a", limit=2)[1]
     count_tag
-    msg("count_tag: " + str(count_tag))
+    # msg("count_tag: " + str(count_tag))
     reviews_count = count_tag.string.split(" ")[0]
     try:
         r_n_r["reviews_count"] = int(reviews_count)
-        msg("reviews: " + str(r_n_r["reviews_count"]))
+        # msg("reviews: " + str(r_n_r["reviews_count"]))
 
         # stars: panel panel-default
-        panel_div = col_left.find("div", class_="panel panel-default")
+        panel_div = left_column.find("div", class_="panel panel-default")
         rate_div = panel_div.find("p", class_="start-point")
         if rate_div:
             r_n_r['ratings']['overall'] = float(rate_div.string.split(" ")[0])
-            msg("Rating overall: " + str(r_n_r['ratings']['overall']))
+            # msg("Rating overall: " + str(r_n_r['ratings']['overall']))
 
             # recommended
             r_n_r['ratings']['recommended'] = int(panel_div.find("td")["data-rate"])
-            msg("Recommended: " + str(r_n_r['ratings']['recommended']))
+            # msg("Recommended: " + str(r_n_r['ratings']['recommended']))
 
             # ratings: table: ratings-specific
-            ratings_tbl = col_left.find("table", class_="ratings-specific")
+            ratings_tbl = left_column.find("table", class_="ratings-specific")
 
             for row in ratings_tbl.find_all("tr"):
                 # msg(first_line(row))
@@ -200,7 +216,7 @@ def parse_employer_review(html):
         pass
 
     # reviews: panel-body content-review disable-user-select
-    rev_panel_div = col_left.find(
+    rev_panel_div = left_column.find(
         "div", class_="panel-body content-review disable-user-select"
     )
 
@@ -242,7 +258,8 @@ def parse_employer_review(html):
             # compose = compose + gc_str
             # comp_l = compose.strip().split("\n\n\n")
             # print("grandchild string: " + str(comp_l))
-            print("Review: " + str(current_review))
+            # msg("Review: " + str(current_review))
+            # current_review["employer"]
             r_n_r['reviews'].append(current_review)
 
     # print(r_n_r)

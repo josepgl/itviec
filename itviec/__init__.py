@@ -2,10 +2,14 @@ import os
 
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap
+
 from config import set_app_config
-from itviec.db import db_session
+from itviec.db import db_session, init_db
 
 bootstrap = Bootstrap()
+
+# for memory based db
+init_db()
 
 
 def page_not_found(e):
@@ -24,10 +28,11 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # App config, handlers and setup
+    # Load configuration and modules
     set_app_config(app.config)
     bootstrap.init_app(app)
 
+    # Handlers
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         db_session.remove()
