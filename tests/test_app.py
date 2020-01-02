@@ -1,6 +1,6 @@
 import unittest
 
-from app import create_app
+from itviec import create_app
 
 
 class BasicTestCase(unittest.TestCase):
