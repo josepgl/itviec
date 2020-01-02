@@ -24,6 +24,7 @@ class Config:
     # SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
     # SQLALCHEMY_DATABASE_URI = "sqlite:////home/jose/projects/itviec/instance/sqlalchemy.sqlite")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = True
 
     BOOTSTRAP_SERVE_LOCAL = True
 
