@@ -14,7 +14,7 @@ bp = Blueprint('itviec', __name__, cli_group=None)
 @bp.route("/")
 def index():
     # return render_template("front_page.html")
-    jobs = db_session.query(Job).order_by(Job.id.desc()).limit(50)
+    jobs = session.query(Job).order_by(Job.id.desc()).limit(50)
     return render_template("jobs.html", jobs=jobs)
 
 
