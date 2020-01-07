@@ -1,7 +1,9 @@
+import json
 from bs4 import BeautifulSoup, Comment
+from flask import current_app
 
-from itviec.helpers import msg, class_name, fetch_url
-import config as Config
+from itviec.helpers import fetch_url, first_line
+import config
 
 
 def parse_employer(html, code):
@@ -216,55 +218,158 @@ def parse_employer_review(html):
         pass
 
     # reviews: panel-body content-review disable-user-select
-    rev_panel_div = left_column.find(
+    review_panel_div = left_column.find(
         "div", class_="panel-body content-review disable-user-select"
     )
 
     r_n_r['reviews'] = []
 
-    # content-of-review
-    if rev_panel_div:
-        for rev_t in rev_panel_div.find_all("div", class_="content-of-review"):
+    # div: company-review
+    # - Headline Photo comment
+    # - Header Information comment
+    # - div: headers hidden-xs
+    # - div: row company-container
+    #   - div: col-md-8 col-left
+    #     - Navigation comment
+    #     - ul: navigation
+    #     - Details Review Calculation comment
+    #     - panel panel-default
+    #     - Have you worked? comment
+    #     - Details Content of Review comment
+    #     - div: panel panel-default
+    #       - div: panel-body content-review disable-user-select
+    #         - First review comment
+
+    #         - Last updated comment
+    #         - div: content-of-review
+
+    #         - Last updated comment
+    #         - div: content-of-review
+
+    #         - ...
+
+    # div: content-of-review
+    # - div: short-summary row
+    # - div: details-review (blur)
+    #   - div: what-you-liked
+    #   - div: feedback
+
+    if review_panel_div:
+        for review_tag in review_panel_div.find_all("div", class_="content-of-review"):
             current_review = {}
-            # print(first_line(rev_t))
+
+            # print(review_tag.previous_sibling.__class__.__name__)
+            # print(review_tag.previous_sibling.previous_sibling.__class__.__name__)
+
+            is_full_review = False
+            previous_tag = review_tag.previous_sibling.previous_sibling
+            if previous_tag.__class__.__name__ is "Comment":
+                is_full_review = True
+                current_review["last_update"] = previous_tag.string.split('"')[1]
+
+            # print("Is full review: {}".format(is_full_review))
+            # short summary tag
+            short_summary_tag = review_tag.find("div", class_="short-summary row")
 
             # r.title: h3 short-title
-            title = rev_t.find("h3", class_="short-title").string.strip()
+            title = short_summary_tag.find("h3", class_="short-title").string.strip()
             current_review["title"] = title
-            # print("Title: " + title)
 
+            # div: stars-and-recommend
             # r.stars
+            stars_tag = short_summary_tag.find("div", class_="stars")
+
+            # general rating
+            round_tag = stars_tag.find("span", class_="round-rate-rating-stars-box")
+            unchecked = len(round_tag.find_all("span", class_="fa-stack unchecked"))
+            current_review["stars_total"] = 5 - unchecked
+
+            # specific rating
+            stars_ul = stars_tag.find("ul", class_="hidden-sm hidden-xs detail-rating-tooltip")
+            # print(stars_ul)
+            categories = ["salary", "training", "management", "culture", "workspace"]
+            for li_tag in stars_ul.find_all("li"):
+                for span in li_tag.find_all("span", class_="round-rate-rating-bar"):
+                    unchecked = len(span.find_all("span", class_="fa fa-square unchecked"))
+                    current_review["stars_" + categories.pop(0)] = 5 - unchecked
+
             # r.recommend
+            recomend_tag = short_summary_tag.find("div", class_="recommend")
+            recomend_span = recomend_tag.find("span")
+            current_review["recommend"] = recomend_span["class"][0] == "yes"
+
             # r.date
-            date = rev_t.find("div", class_="date").string.strip()
+            date = short_summary_tag.find("div", class_="date").string.strip()
             current_review["date"] = date
-            # print("Date: " + date)
-            # r.details-review
-            # detail_t = rev_t.contents[3]  # find('div',class_="date")\
-            #     .string.strip()
-            # print("Detail tag: " + first_line(detail_t))
 
-            # for child in detail_t.contents:
-            # if class_name(child) != 'Tag':
-            # continue
-            # #print("child tag: " + first_line(child))
-            # for gchild in child.contents:
-            # if class_name(gchild) != 'Tag':
-            # continue
-            # #print("grandchild tag: " + first_line(gchild))
+            # details review
+            details_review_tag = review_tag.find("div", class_="details-review")
 
-            # compose = ''
-            # for gc_str in gchild.strings:
-            # compose = compose + gc_str
-            # comp_l = compose.strip().split("\n\n\n")
-            # print("grandchild string: " + str(comp_l))
-            # msg("Review: " + str(current_review))
-            # current_review["employer"]
+            is_blurred = False
+            if "blur" in details_review_tag["class"]:
+                is_blurred = True
+            # print("Is blurred: {}".format(is_blurred))
+
+            if not is_blurred:
+                # Liked
+                liked_tag = details_review_tag.find("div", class_="what-you-liked")
+                liked_paragraph = ""
+                if liked_tag:
+                    for item in liked_tag.p.contents:
+                        if item.__class__.__name__ is "NavigableString":
+                            liked_paragraph = "".join((liked_paragraph, item))
+
+                current_review["liked"] = liked_paragraph
+
+                # Hated
+                hated_tag = details_review_tag.find("div", class_="feedback")
+                hated_paragraph = ""
+                if hated_tag:
+                    for item in hated_tag.p.contents:
+                        if item.__class__.__name__ is "NavigableString":
+                            hated_paragraph = "".join((hated_paragraph, item))
+
+                current_review["hated"] = hated_paragraph
+
             r_n_r['reviews'].append(current_review)
 
     # print(r_n_r)
-
     return r_n_r
+
+
+class JobSummaryParser():
+    def __init__(self, job_tag):
+        self.tag = job_tag
+
+        self.job = {}
+        self.job["id"] = job_tag["id"][4:]
+        self.job["last_update"] = (
+            job_tag.find_next(string=lambda text: isinstance(text, Comment))
+            .extract()
+            .split('"')[1]
+        )
+        self.job["title"] = job_tag.find_all("a")[1].text.strip()
+        self.job["employer_code"] = job_tag.find_all("a", {"target": "_blank"})[0]["href"].split("/")[-1]
+        self.job["url"] = job_tag.find_all("h2", class_="title")[0].a["href"]
+        self.job["salary"] = job_tag.find_all("span", class_="salary-text")[0].text.strip()
+        self.job["address"] = (
+            job_tag.find_all("div", class_="address")[0].text.strip().split("\n\n\n")
+        )
+        self.job["tags"] = (
+            job_tag.find_all("div", class_="tag-list")[0].text.strip().split("\n\n\n")
+        )
+        self.job["description"] = job_tag.find_all("div", class_="description")[0].text.strip()
+
+    def get_dict(self):
+        return self.job
+
+    def get_json(self):
+        return json.dumps(self.job, sort_keys=True, indent=4)
+
+    def save_json(self):
+        filename = "{}/jobs/{}.json".format(config.Config.INSTANCE_DIR, self.job["id"])
+        with open(filename, 'w') as json_file:
+            json.dump(self.job, json_file, sort_keys=True, indent=4)
 
 
 def parse_job_summary(job_block):
@@ -324,7 +429,7 @@ def parse_job_summary(job_block):
 class EmployerFeed():
 
     def __init__(self, **kwargs):
-        self.url = Config.EMPLOYERS_JSON_URL
+        self.url = current_app.config["EMPLOYERS_JSON_URL"]
         # self.json = fetch_url(self.url).json()
         self.response = fetch_url(self.url)
         self.json = self.response.json()
@@ -352,7 +457,7 @@ class JobsFeed():
             self.tags = kwargs['tags']
 
     def url(self):
-        feed_url = Config.Config.URL
+        feed_url = current_app.config["URL"]
         if self.tags:
             feed_url = feed_url + '/' + '-'.join(self.tags)
         if self.location:
