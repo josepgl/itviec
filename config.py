@@ -1,40 +1,47 @@
 import os
 
-# Define the application directory
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
-CONFIG_FILENAME = "config.py"
-DATABASE_FILENAME = "ItViec.sqlite"
 
-EMPLOYERS_JSON_URL = "https://itviec.com/api/v1/employers.json"
-TEMPLATE_EMPLOYER_URL = "https://itviec.com/companies/{}"
-TEMPLATE_EMPLOYER_REVIEW_URL = "https://itviec.com/companies/{}/review"
-
-SQLALCHEMY_DATABASE_URI = "sqlite:////home/jose/projects/itviec/instance/sqlalchemy.sqlite"
+# def print_json(to_json):
+#     import json
+#     json = json.dumps(to_json, indent=4, sort_keys=True, default=str)
+#     print(json)
 
 
 class Config:
-    DEBUG = True
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
 
+    CONFIG_FILENAME = "config.py"
+
+    # ItViec urls
     BASE_URL = "https://itviec.com"
     URL = "https://itviec.com/it-jobs"
+    EMPLOYERS_JSON_URL = "https://itviec.com/api/v1/employers.json"
+    TEMPLATE_EMPLOYER_URL = "https://itviec.com/companies/{}"
+    TEMPLATE_EMPLOYER_REVIEW_URL = "https://itviec.com/companies/{}/review"
 
+    # Database / SQLAlchemy
+    # DATABASE_FILENAME = "ItViec.sqlite"
+    DATABASE_FILENAME = "sqlalchemy.sqlite"
     DATABASE = os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    # SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
-    # SQLALCHEMY_DATABASE_URI = "sqlite:////home/jose/projects/itviec/instance/sqlalchemy.sqlite")
+    # SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or \
+        'sqlite:///' + os.path.join(INSTANCE_DIR, DATABASE_FILENAME)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = True
 
+    # Bootstrap
     BOOTSTRAP_SERVE_LOCAL = True
 
+    # ItViec json header
     HTTP_HEADER_X_REQUESTED_WITH = "XMLHttpRequest"
+    # HTTP_HEADER_COOKIE = "_ITViec_session=..."
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    # DATABASE = ":memory:"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_DIR, 'sqlalchemy.sqlite')
+    SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(Config.INSTANCE_DIR, 'sqlalchemy.sqlite')
+    # SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
 
 
 class TestingConfig(Config):
@@ -47,26 +54,33 @@ class ProductionConfig(Config):
 
 
 config_by_name = dict(
-    dev=DevelopmentConfig, test=TestingConfig, prod=ProductionConfig
+    development=DevelopmentConfig,
+    test=TestingConfig,
+    production=ProductionConfig
 )
 
 req_http_headers = dict()
 
 
-def set_app_config(config, test_config=None):
+# Uses flask.Config (app.config)
+def load_config(config, test_config=None):
     global req_http_headers
+
+    # load the instance config, if it exists, when not testing
+    config_name = os.getenv("FLASK_ENV", "production")
+    print("Loading {} configuration profile.".format(config_name))
+
+    # load default config
+    config.from_object(config_by_name[config_name]())
+
     if test_config is None:
-        # load the instance config, if it exists, when not testing
-        config_name = os.getenv("FLASK_CONFIGURATION", "default")
-        # app.config.from_object(config_by_name[config_name])
-        config.from_object(config_by_name["dev"])
         try:
-            # load default config
-            config.from_pyfile("config.py")
             # load customized config
-            config.from_pyfile("instance/config.py")
+            print("Loading custom configuration.")
+            config.from_pyfile("config.py")
             # app.config.from_pyfile('config.py', silent=True)
-        except:
+        except FileNotFoundError:
+            print("Custom config.py file missing in instance folder.")
             pass
     else:
         # load the test config if passed in
@@ -75,9 +89,8 @@ def set_app_config(config, test_config=None):
     req_http_headers = collect_http_headers(config)
 
     # Debugging
-    # import json
-    # conf_json = json.dumps(app.config, indent=4, sort_keys=True, default=str)
-    # print(conf_json)
+    # print_json(config)
+
 
 def collect_http_headers(conf):
     for k, v in conf.get_namespace('HTTP_HEADER_').items():
