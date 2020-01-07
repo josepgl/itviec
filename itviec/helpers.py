@@ -1,7 +1,7 @@
-import flask
+# import flask
 import requests
 
-import config as Config
+import config
 
 
 def first_line(s):
@@ -30,7 +30,7 @@ def fetch_url(url):
     # Fetch page
     # print('Fetching url {}'.format(url)) # DEBUG
 
-    response = requests.get(url, headers=Config.req_http_headers)
+    response = requests.get(url, headers=config.req_http_headers)
 
     # Check response code
     if response.status_code != 200:
@@ -41,14 +41,12 @@ def fetch_url(url):
     return response
 
 
-def get_config():
-    config = flask.Config(Config.BASE_DIR)
-    Config.set_app_config(config)
-    # print(config)
+# def get_config():
+#     config = flask.Config(Config.BASE_DIR)
+#     Config.load_config(config)
+#     # print(config)
 
-    return config
-
-
-conf = get_config()
+#     return config
 
 
+# conf = get_config()
