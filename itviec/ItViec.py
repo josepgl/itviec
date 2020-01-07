@@ -25,7 +25,7 @@ import requests
 import flask
 from bs4 import BeautifulSoup, Comment
 
-import config as Config
+import config
 from .storage import SQLiteStorage
 
 conf = {}
@@ -70,15 +70,15 @@ def fetch_url(url):
     return response
 
 
-def get_config():
-    config = flask.Config(Config.BASE_DIR)
-    Config.set_app_config(config)
-    # print(config)
+# def get_config():
+#     conf = flask.Config(Config.BASE_DIR)
+#     config.load_config(conf)
+#     # print(config)
 
-    return config
+#     return conf
 
 
-conf = get_config()
+# conf = config.get_config()
 
 
 def collect_http_headers(conf):

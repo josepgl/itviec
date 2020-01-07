@@ -3,13 +3,13 @@ import os
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap
 
-from config import set_app_config
-from itviec.db import db_session, init_db
+import config
+import itviec.db
 
 bootstrap = Bootstrap()
 
 # for memory based db
-init_db()
+itviec.db.init_db()
 
 
 def page_not_found(e):
@@ -29,13 +29,13 @@ def create_app(test_config=None):
         pass
 
     # Load configuration and modules
-    set_app_config(app.config)
+    config.load_config(app.config)
     bootstrap.init_app(app)
 
     # Handlers
     @app.teardown_appcontext
     def shutdown_session(exception=None):
-        db_session.remove()
+        itviec.db.session.remove()
 
     app.register_error_handler(404, page_not_found)
 
@@ -43,6 +43,10 @@ def create_app(test_config=None):
     import itviec.views
     app.register_blueprint(itviec.views.bp)
     app.add_url_rule('/', endpoint='index')
+
+    import itviec.cmd_views
+    app.register_blueprint(itviec.cmd_views.bp)
+    # app.add_url_rule('/', endpoint='index')
 
     if app.config['ENV'] != 'production':
         from . import dev
