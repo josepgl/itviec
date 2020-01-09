@@ -3,10 +3,10 @@
 {% block title %}Jobs{% endblock %}
 
 {% block app_content %}
-<div class="container pt-5 pb-5">
-  <h1>Latest jobs:</h1>
+<div class="container pt-3 pb-4">
+  <h1 class="pb-3">Latest jobs:</h1>
 
-  <div class="container pt-3 pl-0 pr-0">
+  <div class="container pl-0 pr-0">
 	{% for j in jobs %}
     <div class="card container">
       <div class="card-body">
@@ -39,9 +39,9 @@
           <div class="col-sm-2">Tags:</div>
           <div class="col-sm">
             <ul class="list-inline">
-            {% for tag in j.tags %}
+            {% for jtag in j.tags %}
               <li class="list-inline-item">
-                <div class="btn btn-outline-dark btn-sm disabled">{{tag.name}}</div>
+                <div class="btn btn-outline-dark btn-sm disabled">{{jtag.tag.name}}</div>
               </li>
             {% endfor %}
             </ul>
