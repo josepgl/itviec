@@ -15,7 +15,7 @@
 {% block head %}
 <style>
 body {
-    background: url("/img/not_found.png") no-repeat center center fixed;
+    background: url("{{url_for('static', filename='img/not_found.png')}}") no-repeat center center fixed;
     background-size: cover;
 }
 </style>
