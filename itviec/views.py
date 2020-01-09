@@ -3,7 +3,7 @@ from flask import current_app as app
 
 # import itviec.ItViec as ItViec
 from itviec.db import db
-from itviec.models import Job, Employer, Tag
+from itviec.models import Job, Tag, JobTag
 
 # for debugging
 from pprint import pprint
@@ -39,7 +39,6 @@ def hcm():
 @bp.route("/tags")
 def tags():
     from sqlalchemy import func, desc
-    from itviec.models import JobTag
 
     query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
     query = query.join(JobTag).group_by(Tag.name).order_by(desc("count"))
