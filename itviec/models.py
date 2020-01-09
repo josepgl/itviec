@@ -3,31 +3,18 @@ from sqlalchemy import Integer, String, Text, Boolean
 from sqlalchemy.orm import relationship, backref
 
 import config
-from itviec.db import Base, session
+from itviec.db import db
 from itviec.helpers import fetch_url
 from itviec.parsers import JobSummaryParser, parse_employer, parse_employer_review
 from pprint import pprint
 
-job_address = Table('job_address', Base.metadata,
+job_address = Table('job_address', db.base.metadata,
                     Column('job_id', Integer, ForeignKey('job.id')),
                     Column('address_id', Integer, ForeignKey('address.id'))
                     )
 
 
-# job_tag = Table('job_tag', Base.metadata,
-#                 Column('job_id', Integer, ForeignKey('job.id')),
-#                 Column('tag_id', Integer, ForeignKey('tag.id')),
-
-#                 # UniqueConstraint('job_id', 'tag_id')
-#                 )
-
-# employer_job = Table('employer_job', Base.metadata,
-#                      Column('employer_id', Integer, ForeignKey('employer.id')),
-#                      Column('job_id', Integer, ForeignKey('job.id')),
-#                      )
-
-
-class Employer(Base):
+class Employer(db.base):
     __tablename__ = 'employer'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -96,8 +83,7 @@ class Employer(Base):
         return employer
 
 
-# class Job(db.Model):
-class Job(Base):
+class Job(db.base):
     __tablename__ = 'job'
 
     id = Column(Integer, primary_key=True, nullable=False)
@@ -132,19 +118,18 @@ class Job(Base):
         return '<Job {}: {}>'.format(self.id, self.title)
 
     def save(self):
-        session.add(self)
-        session.commit()
+        db.session.add(self)
+        db.session.commit()
 
     @classmethod
     def from_tag(self, tag):
-        # job_response = fetch_url(job_url)
         job_p = JobSummaryParser(tag)
         job_dict = job_p.get_dict()
         return self.from_dict(job_dict)
 
     @classmethod
     def from_dict(self, job_dict):
-        # has_job = session.query(Job).filter_by(id=job_dict["id"]).first()
+        # has_job = db.session.query(Job).filter_by(id=job_dict["id"]).first()
         # if has_job:
         #     return has_job
 
@@ -152,26 +137,26 @@ class Job(Base):
         addresses = []
         for job_address in job_dict["address"]:
             # print("job_address: " + job_address)
-            has_addr = session.query(Address).filter_by(name=job_address).first()
+            has_addr = db.session.query(Address).filter_by(name=job_address).first()
             if has_addr is not None:
                 addresses.append(has_addr)
             else:
                 addresses.append(Address(name=job_address))
-                session.add(addresses[-1])
+                db.session.add(addresses[-1])
             # pprint(addresses[-1].__dict__)
 
         tags = []
         for job_tag in job_dict["tags"]:
             # print("job_tag: " + job_tag)
-            has_tag = session.query(Tag).filter_by(name=job_tag).first()
+            has_tag = db.session.query(Tag).filter_by(name=job_tag).first()
             if has_tag is not None:
                 tags.append(has_tag)
             else:
                 tags.append(Tag(name=job_tag))
-                session.add(tags[-1])
+                db.session.add(tags[-1])
             # pprint(tags[-1].__dict__)
 
-        session.commit()
+        db.session.commit()
         job_dict["address"] = []
         job_dict["tags"] = []
         job = Job(**job_dict)
@@ -182,7 +167,7 @@ class Job(Base):
         return job
 
     def link_tag(self, tag):
-        has_link = session.query(JobTag).filter_by(job_id=self.id, tag_id=tag.id).first()
+        has_link = db.session.query(JobTag).filter_by(job_id=self.id, tag_id=tag.id).first()
 
         if has_link:
             print("{} already exists".format(has_link))
@@ -190,12 +175,12 @@ class Job(Base):
 
         job_tag_link = JobTag(job_id=self.id, tag_id=tag.id)
         print("Created: {}".format(job_tag_link))
-        session.add(job_tag_link)
+        db.session.add(job_tag_link)
 
         return job_tag_link
 
 
-class JobTag(Base):
+class JobTag(db.base):
     __tablename__ = 'job_tag'
 
     job_tag_id = Column(Integer(), primary_key=True)
@@ -211,7 +196,7 @@ class JobTag(Base):
         return '<JobTag job={} tag={}>'.format(self.job_id, self.tag_id)
 
 
-class Tag(Base):
+class Tag(db.base):
     __tablename__ = 'tag'
 
     id = Column(Integer(), primary_key=True)
@@ -231,7 +216,7 @@ class Tag(Base):
         return '<Tag {}>'.format(self.name)
 
 
-class Address(Base):
+class Address(db.base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
@@ -241,7 +226,7 @@ class Address(Base):
         return '<Address {}>'.format(self.name)
 
 
-class Review(Base):
+class Review(db.base):
     __tablename__ = 'review'
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
