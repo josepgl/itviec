@@ -6,7 +6,7 @@ from flask import current_app as app
 
 # import itviec.ItViec as ItViec
 import itviec.parsers
-from itviec.db import session
+from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag
 
 # for debugging
@@ -149,7 +149,7 @@ def job_json_dict(max=None):
 
     print("Tags:", str(tags.keys()))
     print("Addresses:", str(addresses.keys()))
-    session.commit()
+    db.session.commit()
 
     return None
 
@@ -158,7 +158,7 @@ def job_json_dict(max=None):
 def tags_count():
     from sqlalchemy import func, desc
 
-    query = session.query(Tag.name, func.count(JobTag.job_id).label('count'))
+    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
     print(query)
     query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
     print(query)
