@@ -1,29 +1,28 @@
-# import flask
 import requests
 
 import config
 
 
-def first_line(s):
-    return str(s).splitlines()[0]
+def first_line(string):
+    return str(string).splitlines()[0]
 
 
-def class_name(i):
-    return i.__class__.__name__
+def class_name(instance):
+    return instance.__class__.__name__
 
 
-def log(s, *args):
-    print("ItViec " + s.format(*args))
+def log(string, *args):
+    print("ItViec " + string.format(*args))
 
 
-def log_msg(s, *args):
-    s = "{}:{}() " + s
-    print(s.format(*args))
+def log_msg(string, *args):
+    string = "{}:{}() " + string
+    print(string.format(*args))
 
 
-def msg(s):
-    if conf['DEBUG']:
-        print(s)
+def msg(string):
+    if config.DEBUG:
+        print(string)
 
 
 def fetch_url(url):
@@ -39,14 +38,3 @@ def fetch_url(url):
         )
 
     return response
-
-
-# def get_config():
-#     config = flask.Config(Config.BASE_DIR)
-#     Config.load_config(config)
-#     # print(config)
-
-#     return config
-
-
-# conf = get_config()
