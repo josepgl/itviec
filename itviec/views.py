@@ -38,17 +38,13 @@ def hcm():
 
 @bp.route("/tags")
 def tags():
-    from sqlalchemy import func
-    tags_count = db.session.query(Job.tags, func.count(Job.tags)).group_by(Job.tags).all()
+    from sqlalchemy import func, desc
+    from itviec.models import JobTag
 
-    return render_template("tags.html", tags=tags_count)
+    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
+    query = query.join(JobTag).group_by(Tag.name).order_by(desc("count"))
 
-
-# @bp.route("/tags")
-# def tags():
-#     itv = ItViec.ItViec()
-#     tags_count = itv.get_tags_count()
-#     return render_template("tags.html", tags=tags_count)
+    return render_template("tags.html", tags=query)
 
 
 @bp.route("/about")
