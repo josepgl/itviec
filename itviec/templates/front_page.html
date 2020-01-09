@@ -3,8 +3,9 @@
 {% block title %}Front Page{% endblock %}
 
 {% block app_content %}
-  <h1>Front Page</h1>
+<div class="container pt-3 pb-4">
+  <h1 class="pb-3">Front Page</h1>
 
   <img src="{{url_for('static', filename='img/job_postings.png')}}">
-
+</div>
 {% endblock %}
