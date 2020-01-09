@@ -1,25 +1,33 @@
 {% extends "base.html" %}
 
 {% block app_content %}
-  <h1>Tags</h1>
+<div class="container pt-3 pb-4">
+  <h1 class="pb-3">Tags</h1>
 
-  <table class="table table-striped" style="width:auto">
-  <thead>
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col">Tag</th>
-      <th scope="col">Count</th>
-    </tr>
-  </thead>
-  <tbody>
-{% for row in tags %}
-    <tr>
-      <th scope="row">{{loop.index}}</th>
-      <td>{{row[0]}}</td>
-      <td>{{row[1]}}</td>
-    </tr>
-{% endfor %}
-  </tbody>
-</table>
+  <div class="card" style="width: 18rem;">
+    <h5 class="card-header">Top tags</h5>
+    <div class="card-body">
+      <!-- <h5 class="card-title">Top tags</h5> -->
+      <table class="table table-striped table-sm card-text" style="width:auto">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Tag</th>
+            <th scope="col">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for row in tags %}
+          <tr>
+            <th scope="row">{{loop.index}}</th>
+            <td>{{row[0]}}</td>
+            <td>{{row[1]}}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
+</div>
 {% endblock %}
