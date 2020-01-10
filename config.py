@@ -90,8 +90,8 @@ def init_app(app, profile=None, test_config=None):
 
     req_http_headers = collect_http_headers(app.config)
 
-    if app.config["DEBUG"] is True:
-        print_json(app.config)
+    # if app.config["DEBUG"] is True:
+    #     print_json(app.config)
 
 
 def collect_http_headers(conf):
