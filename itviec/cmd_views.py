@@ -7,15 +7,31 @@ from flask import current_app as app
 # import itviec.ItViec as ItViec
 import itviec.parsers
 from itviec.db import db
-from itviec.models import Job, Employer, Tag, JobTag
+from itviec.models import Job, Employer, Tag, JobTag, Address
 
 # for debugging
 from pprint import pprint
 
-bp = Blueprint('itviec_cmd', __name__, cli_group=None)
+cmd_bp = Blueprint('itviec_cmd', __name__, cli_group=None)
+job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
 
 
-@bp.cli.command('update-db')
+@cmd_bp.cli.command('stats')
+def stats():
+    jobs = Job.query.count()
+    addresses = Address.query.count()
+    employers = Employer.query.count()
+    tags = Tag.query.count()
+    jobtags = JobTag.query.count()
+
+    print("Jobs: {}".format(jobs))
+    print("Tags: {}".format(tags))
+    print("Addresses: {}".format(addresses))
+    print("JobTags: {}".format(jobtags))
+    print("Employers: {}".format(employers))
+
+
+@cmd_bp.cli.command('update-db')
 def update_db():
     itv = ItViec.ItViec()
 
@@ -37,13 +53,13 @@ def update_db():
     itv.close()
 
 
-@bp.cli.command('test-job')
+@cmd_bp.cli.command('test-job')
 @click.argument('jid')
 def test_job(jid):
     print(Job.request_job(jid))
 
 
-@bp.cli.command('test-emp')
+@cmd_bp.cli.command('test-emp')
 @click.argument('code')
 def test_emp(code):
     employer = Employer.request_employer(code)
@@ -51,7 +67,7 @@ def test_emp(code):
     pprint(employer.__dict__)
 
 
-@bp.cli.command('test-emp-feed')
+@cmd_bp.cli.command('test-emp-feed')
 # @click.argument('code')
 def test_emp_feed():
     feed = itviec.parsers.EmployerFeed()
@@ -69,7 +85,7 @@ def test_emp_feed():
         print("<------------------------------------>")
 
 
-@bp.cli.command('test-jobs-feed')
+@cmd_bp.cli.command('test-jobs-feed')
 def test_jobs_feed():
     feed = itviec.parsers.JobsFeed()
 
@@ -82,7 +98,7 @@ def test_jobs_feed():
         print(job.tags)
 
 
-@bp.cli.command('update-jobs')
+@cmd_bp.cli.command('update-jobs')
 def update_jobs():
     feed = itviec.parsers.JobsFeed()
     j_count = 1
@@ -96,8 +112,21 @@ def update_jobs():
         j_count += 1
 
 
-@bp.cli.command('job-tag-json')
-@click.argument('max')
+@cmd_bp.cli.command('tags-count')
+def tags_count():
+    from sqlalchemy import func, desc
+
+    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
+    print(query)
+    query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
+    print(query)
+    for row in query:
+        print(row)
+
+
+# job ############################################################
+@job_bp.cli.command('feed2json')
+# @click.argument('max')
 def job_tag_json(max=None):
     if max:
         try:
@@ -130,7 +159,7 @@ def load_jobs_json():
     return job_dicts
 
 
-@bp.cli.command('job-json-dict')
+@job_bp.cli.command('json2db')
 def job_json_dict(max=None):
 
     job_dicts = load_jobs_json()
@@ -152,15 +181,3 @@ def job_json_dict(max=None):
     db.session.commit()
 
     return None
-
-
-@bp.cli.command('tags-count')
-def tags_count():
-    from sqlalchemy import func, desc
-
-    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
-    print(query)
-    query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
-    print(query)
-    for row in query:
-        print(row)

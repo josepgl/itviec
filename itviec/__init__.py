@@ -29,7 +29,8 @@ def create_app(profile=None, test_config=None):
     app.add_url_rule('/', endpoint='index')
 
     import itviec.cmd_views
-    app.register_blueprint(itviec.cmd_views.bp)
+    app.register_blueprint(itviec.cmd_views.cmd_bp)
+    app.register_blueprint(itviec.cmd_views.job_bp)
 
     if app.config['ENV'] != 'production':
         from . import dev
