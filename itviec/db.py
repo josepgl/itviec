@@ -22,9 +22,9 @@ class Database():
     def get_session(self):
         if self.session is None:
             self.session = scoped_session(
-                                sessionmaker(autocommit=False,
-                                             autoflush=False,
-                                             bind=self.engine))
+                sessionmaker(autocommit=False,
+                             autoflush=False,
+                             bind=self.engine))
 
         return self.session
 
@@ -33,6 +33,7 @@ class Database():
         self.set_uri(uri)
 
         print("Enabling close session on app context teardown")
+
         @app.teardown_appcontext
         def close_session(exception=None):
             db.session.remove()
@@ -45,7 +46,7 @@ class Database():
         # import all modules here that might define models so that
         # they will be registered properly on the metadata.  Otherwise
         # you will have to import them first before calling init_db()
-        import itviec.models
+        import itviec.models  # noqa
         self.base.metadata.create_all(bind=self.engine)
 
 
