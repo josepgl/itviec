@@ -4,7 +4,6 @@ import click
 from flask import Blueprint
 from flask import current_app as app
 
-# import itviec.ItViec as ItViec
 import itviec.parsers
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag, Address
@@ -13,11 +12,18 @@ from itviec.models import Job, Employer, Tag, JobTag, Address
 from pprint import pprint
 
 cmd_bp = Blueprint('itviec_cmd', __name__, cli_group=None)
+db_bp = Blueprint('itviec_cmd_db', __name__, cli_group="db")
 job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
 emp_bp = Blueprint('itviec_cmd_employer', __name__, cli_group="employer")
 
 
-@cmd_bp.cli.command('stats')
+@db_bp.cli.command('init')
+def init_db():
+    print("Initializing database")
+    db.init_db()
+
+
+@db_bp.cli.command('stats')
 def stats():
     jobs = Job.query.count()
     addresses = Address.query.count()
@@ -34,24 +40,7 @@ def stats():
 
 @cmd_bp.cli.command('update-db')
 def update_db():
-    itv = ItViec.ItViec()
-
-    for section in ItViec._init_ITViecSections():
-        print(section)
-
-        for page in section:
-            print("main: Page: " + page.url)
-
-            for job in page:
-                # ~ print(job.id)
-
-                if itv.db.has_job_id(job.id):
-                    continue
-                else:
-                    pass
-                    # itv.add_job(job)
-
-    itv.close()
+    pass
 
 
 @cmd_bp.cli.command('test-emp-feed')
@@ -104,7 +93,6 @@ def tags_count():
     from sqlalchemy import func, desc
 
     query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
-    print(query)
     query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
     print(query)
     for row in query:
@@ -116,7 +104,6 @@ def employers_jobs_count():
     from sqlalchemy import func, desc
 
     query = db.session.query(Job.employer_code, func.count(Job.employer_code).label('count'))
-    print(query)
     query = query.group_by(Job.employer_code).order_by(desc("count")).limit(100)
     print(query)
     for row in query:
@@ -136,7 +123,7 @@ def job_tag_json(max=None):
     feed = itviec.parsers.JobsFeed()
 
     for j_tag in feed.job_tags():
-        p = itviec.parsers.JobSummaryParser(j_tag)
+        p = itviec.parsers.JobTagParser(j_tag)
 
         print(p.get_json())
         p.save_json()
@@ -189,10 +176,13 @@ def job_show(jid):
 
 
 # employer ############################################################
-@emp_bp.cli.command('test')
+@emp_bp.cli.command('parse')
 @click.argument('code')
 def test_emp(code):
-    employer = Employer.request_employer(code)
-    # emp_instance = Employer.request_employer(code)
-    # print(employer)
-    pprint(employer.__dict__)
+    employer_p = itviec.parsers.EmployerParser(code)
+    employer_p.fetch_and_parse()
+    employer_p.digest()
+    employer_p.fetch_and_parse_reviews()
+
+    # pprint(employer_p.__dict__)
+    pprint(employer_p.reviews)
