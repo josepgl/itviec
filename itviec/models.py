@@ -4,9 +4,7 @@ from sqlalchemy.orm import relationship, backref
 
 import config
 from itviec.db import db
-from itviec.helpers import fetch_url
-from itviec.parsers import JobSummaryParser, parse_employer, parse_employer_review
-from pprint import pprint
+from itviec.parsers import JobTagParser, EmployerParser
 
 job_address = Table('job_address', db.base.metadata,
                     Column('job_id', Integer, ForeignKey('job.id')),
@@ -30,9 +28,8 @@ class Employer(db.base):
     website = Column(String(128))
 
     # Description fields
-    description = Column(Text(), nullable=False, unique=True)  # Large text
-    panel = Column(Text(), nullable=False, unique=True)
-    # header = Column(String(), nullable=False, unique=True)
+    overview = Column(Text(), nullable=False, unique=True)  # Large text
+    why = Column(Text(), nullable=False, unique=True)  # Large text
 
     # jobs = relationship('Job', lazy=True)
     # tags = Column(String(128), ForeignKey('tag.name'), nullable=False)
@@ -46,23 +43,22 @@ class Employer(db.base):
 
     @classmethod
     def request_employer(self, code):
-        employer_url = config.Config.TEMPLATE_EMPLOYER_URL.format(code)
+        # employer_url = config.Config.TEMPLATE_EMPLOYER_URL.format(code)
         # print(employer_url)
-        employer_response = fetch_url(employer_url)
-        employer_dict = parse_employer(employer_response.text, code)
-        employer_dict['panel'] = "<div>"
+        # employer_response = fetch_url(employer_url)
+        employer_dict = EmployerParser(code)
         # print(employer_dict)
 
         # print("#### Review ##################")
-        review_url = config.Config.TEMPLATE_EMPLOYER_REVIEW_URL.format(code)
-        review_response = fetch_url(review_url)
-        review_dict = parse_employer_review(review_response.text)
-        pprint(review_dict['reviews'][0])
+        # review_url = config.Config.TEMPLATE_EMPLOYER_REVIEW_URL.format(code)
+        # review_response = fetch_url(review_url)
+        # review_dict = ReviewParser(review_response.text)
+        # pprint(review_dict['reviews'][0])
         # print(review_dict)
 
-        reviews = []
-        for rev in review_dict["reviews"]:
-            reviews.append(Review(**rev))
+        # reviews = []
+        # for rev in review_dict["reviews"]:
+        #     reviews.append(Review(**rev))
         # print("reviews: " + str(reviews))
         # print("#### End of Review ###########")
         # employer_dict.last_update(review_dict)
@@ -73,7 +69,7 @@ class Employer(db.base):
 
         # employer_dict['jobs'] = []
         # employer_dict['reviews'] = []
-        employer_dict['panel'] = "<div>"
+        employer_dict['overview'] = "<overview len:{}>".format(len(employer_dict['overview']))
         # print("employer_dict:")
         # pprint(employer_dict)
         employer = Employer(**employer_dict)
@@ -123,7 +119,7 @@ class Job(db.base):
 
     @classmethod
     def from_tag(self, tag):
-        job_p = JobSummaryParser(tag)
+        job_p = JobTagParser(tag)
         job_dict = job_p.get_dict()
         return self.from_dict(job_dict)
 
@@ -219,7 +215,7 @@ class Tag(db.base):
 class Address(db.base):
     __tablename__ = 'address'
 
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(128), unique=True, nullable=False)
 
     def __repr__(self):
@@ -229,7 +225,7 @@ class Address(db.base):
 class Review(db.base):
     __tablename__ = 'review'
 
-    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(128), unique=True)
     date = Column(String(128), unique=True)
     employer_code = Column(String(128), ForeignKey('employer.code'), nullable=False)
