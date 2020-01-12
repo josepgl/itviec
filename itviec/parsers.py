@@ -1,9 +1,11 @@
 import json
 from bs4 import BeautifulSoup, Comment
-from flask import current_app
+from flask import current_app as app
 
 from itviec.helpers import fetch_url, first_line
 import config
+
+from pprint import pprint
 
 
 def parse_employer(html, code):
@@ -127,8 +129,16 @@ def parse_employer(html, code):
     # msg("Paragraph: " + str(paragraph2))
 
     # Panel jobs: panel panel-default jobs
-    panel_jobs_div = left_column.find("div",
-                                      class_="panel panel-default jobs")
+    panel_jobs_div = left_column.find("div", class_="panel panel-default jobs")
+    jobs_iterator = JobIteratorInPage(panel_jobs_div)
+    emp["jobs"] = []
+    # for job_tag in JobIteratorInPage(panel_jobs_div):
+    for job_tag in jobs_iterator:
+        # print(job_tag)
+        job_parser = JobSummaryParser(job_tag)
+        job_dictionary = job_parser.get_dict()
+        pprint(job_dictionary)
+        emp["jobs"].append(job_dictionary)
     # msg("Jobs: " + str(panel_jobs_div))
 
     # emp["job_ids"] = []
@@ -350,7 +360,7 @@ class JobSummaryParser():
         )
         self.job["title"] = job_tag.find_all("a")[1].text.strip()
         self.job["employer_code"] = job_tag.find_all("a", {"target": "_blank"})[0]["href"].split("/")[-1]
-        self.job["url"] = job_tag.find_all("h2", class_="title")[0].a["href"]
+        self.job["url"] = job_tag.find("div", class_="details").a["href"]
         self.job["salary"] = job_tag.find_all("span", class_="salary-text")[0].text.strip()
         self.job["address"] = (
             job_tag.find_all("div", class_="address")[0].text.strip().split("\n\n\n")
@@ -370,59 +380,6 @@ class JobSummaryParser():
         filename = "{}/jobs/{}.json".format(config.Config.INSTANCE_DIR, self.job["id"])
         with open(filename, 'w') as json_file:
             json.dump(self.job, json_file, sort_keys=True, indent=4)
-
-
-def parse_job_summary(job_block):
-    """
-    Extract job details from html and build a dictionary to create a Job
-    instance
-
-    Input: html list source
-    Output: Job object
-    """
-
-    j_bl = job_block
-    job = {}
-
-    # soup = BeautifulSoup(job_block, "html.parser")
-    # j_bl = soup.div.find_next(class_="job")
-
-    job["id"] = j_bl["id"][4:]
-    job["last_update"] = (
-        j_bl.find_next(string=lambda text: isinstance(text, Comment))
-        .extract()
-        .split('"')[1]
-    )
-    job["title"] = j_bl.find_all("a")[1].text.strip()
-    # job["employer_url"] = j_bl.find_all("a", {"target": "_blank"})[0]["href"]
-    job["employer_code"] = j_bl.find_all("a", {"target": "_blank"})[0]["href"].split("/")[-1]
-    job["url"] = j_bl.find_all("h2", class_="title")[0].a["href"]
-    job["salary"] = j_bl.find_all("span", class_="salary-text")[0].text.strip()
-    job["address"] = (
-        j_bl.find_all("div", class_="address")[0].text.strip().split("\n\n\n")
-    )
-    job["tags"] = (
-        j_bl.find_all("div", class_="tag-list")[0].text.strip().split("\n\n\n")
-    )
-    job["description"] = j_bl.find_all("div", class_="description")[0].text.strip()
-    # job["time"] = j_bl.find_all("span", class_="distance-time")[0].text.strip()
-
-    # datetime_format = '%Y-%m-%d %H:%M:%S %z'
-    # time_obj = datetime.strptime(job['last_update'], datetime_format)
-    # time_obj = datetime.fromisoformat(job['last_update'])
-
-    # print("last_update: " + job['last_update'])
-    # print(type(time_obj))
-    # print(time_obj)
-    # print(time_obj.strftime(datetime_format))
-    # print(time_obj.isoformat())
-
-    # j = Job(job)
-    # print(j) # DEBUG
-
-    # exit()
-
-    return job
 
 
 # EmployerFeed #################################################
@@ -548,14 +505,17 @@ class JobIteratorInPage:
     def __init__(self, content):
         if content is None:
             raise Exception("Page is empty")
-
-        self.soup = BeautifulSoup(content, "html.parser")
+        elif content.__class__.__name__ is "str":
+            self.job_panel_tag = BeautifulSoup(content, "html.parser")
+        elif content.__class__.__name__ is "Tag":
+            self.job_panel_tag = content
         # print( "Soup class: " + str(type(self.soup)) )
 
-        self.div = self.soup.div
+        # self.div = self.soup.div
         # print( "div tag class: " + str(type(self.div)) )
 
-        self.next_block = self.div.find_next(class_="job")
+        # self.next_block = self.div.find_next(class_="job")
+        self.next_block = self.job_panel_tag.find_next(class_="job")
         # print( "self.next_block class: " + str(type(self.next_block)) )
         # print("Next block: " + str(self.next_block).splitlines()[0])
 
@@ -572,3 +532,6 @@ class JobIteratorInPage:
 
         return job_block
         # return job
+
+    def __iter__(self):
+        return self
