@@ -1,353 +1,514 @@
 import json
-from bs4 import BeautifulSoup, Comment
 from flask import current_app as app
+from bs4 import BeautifulSoup, Comment
 
-from itviec.helpers import fetch_url, first_line
-import config
-
-from pprint import pprint
+from itviec.helpers import fetch_url
 
 
-def parse_employer(html, code):
-    '''
-    - Div: company-page
-        - Div::cover-images-desktop
-        - Div::headers hidden-xs: Info
-        - Div::row company-container
-            - Div::col-md-8 col-left
-                - UL::navigation
-                - Last update comment
-                - Div::panel panel-default: Description
-                - Jobs comment
-                - Div::panel panel-default jobs: Jobs
-                - Last update comment
-                - Div::panel panel-default: Why
-                - Our people comment
-                - Location comment
-                - Div::panel panel-default: Location
-            - Div::col-md-4 col-right: Reviews info
-    '''
-    bs = BeautifulSoup(html, "html.parser")
+class EmployerFeed:
 
-    emp = {
-        'code': code,
-        # 'url': Config.TEMPLATE_EMPLOYER_URL.format(code)
-    }
+    def __init__(self, **kwargs):
+        self.url = app.config["EMPLOYERS_JSON_URL"]
+        # self.json = fetch_url(self.url).json()
+        self.response = fetch_url(self.url)
+        self.json = self.response.json()
+        # print(self.json)
+        # self.json = json.load(json_string)
 
-    company_tag = bs.div.find(class_="company-page")
+    def __len__(self):
+        return len(self.json)
 
-    # ############################# #
-    # Company general info / Header #
-    # ############################# #
-    header_tag = company_tag.find("div", class_="headers hidden-xs")
-
-    # Logo: div::logo-container
-    logo_container_tag = header_tag.find("div", class_="logo-container")
-    logo_tag = logo_container_tag.find("img")
-    emp["logo"] = logo_tag["data-src"]
-    # msg("Logo: '{}'".format(emp["logo"]))
-
-    # c name-and-info
-    # name: h1::title
-    name_tag = header_tag.find("h1")
-    emp["name"] = name_tag.string.strip()
-    # msg("Company name: '{}'".format(emp["name"]))
-
-    # location: location
-    nni_tag = header_tag.find("div", class_="name-and-info")
-    location_tag = nni_tag.find("span")
-    emp["location"] = location_tag.contents[2].strip()
-    # msg("Company location: '{}'".format(emp["location"]))
-
-    # Industry: span::gear-icon
-    industry_tag = header_tag.find("span", class_="gear-icon")
-    emp["industry"] = industry_tag.string.strip()
-    # msg("Company industry: '{}'".format(emp["industry"]))
-
-    # Employees: span::group-icon
-    employees_tag = header_tag.find("span", class_="group-icon")
-    emp["employees"] = employees_tag.string.strip()
-    # msg("Company employees: '{}'".format(emp["employees"]))
-
-    # Country: div::country span::name
-    country_div = header_tag.find("div", class_="country")
-    country_span = country_div.find("span")
-    emp["country"] = country_span.string.strip()
-    # msg("Company country: '{}'".format(emp["country"]))
-
-    # Working days: div::working-date span
-    w_days_div = header_tag.find("div", class_="working-date")
-    # print(header_tag)
-    # print(first_line(w_days_div))
-    if w_days_div:
-        w_days_span = w_days_div.find("span")
-        emp["working_days"] = w_days_span.string.strip()
-    else:
-        emp["working_days"] = None
-    # msg("Company working days: '{}'".format(emp["working_days"]))
-
-    # Overtime: div::overtime
-    overtime_div = header_tag.find("div", class_="overtime")
-    # print(first_line(overtime_div))
-    if overtime_div:
-        overtime_span = overtime_div.find("span")
-        emp["overtime"] = overtime_span.string.strip()
-    else:
-        emp["overtime"] = None
-    # msg("Overtime: '{}'".format(emp["overtime"]))
-
-    # ###################### #
-    # Container Left Columnn #
-    # ###################### #
-
-    left_column = company_tag.find(class_="col-md-8 col-left")
-    # print(first_line(col_left))
-
-    # Panel description
-    # Navigation
-    # website
-    nav = left_column.find("ul", class_="navigation")
-    emp["website"] = nav.find("a", class_="ion-android-open")["href"]
-    # msg("Website: " + emp["website"])
-
-    # TODO: facebook
-
-    # Panel header
-    panel_div = left_column.find("div", class_="panel panel-default")
-    emp["panel"] = panel_div
-    # msg("Panel: " + str(emp["panel"]))
-    # emp["header"] = panel_div.find("h3", class_="panel-title headline")\
-    #     .string.strip()
-    # msg("Header: " + emp["header"])
-
-    # Panel body
-    # panel_b_div = col_left.find("div", class_="panel-body")
-    # paragraph1 = panel_b_div.find("div", class_="paragraph")\
-    #     .contents[1].contents[0]
-    # paragraph2 = paragraph1.contents[0]
-    # msg("Paragraph class: " + class_name(paragraph2))
-    # msg("Paragraph: " + str(paragraph2))
-
-    # Panel jobs: panel panel-default jobs
-    panel_jobs_div = left_column.find("div", class_="panel panel-default jobs")
-    jobs_iterator = JobIteratorInPage(panel_jobs_div)
-    emp["jobs"] = []
-    # for job_tag in JobIteratorInPage(panel_jobs_div):
-    for job_tag in jobs_iterator:
-        # print(job_tag)
-        job_parser = JobSummaryParser(job_tag)
-        job_dictionary = job_parser.get_dict()
-        pprint(job_dictionary)
-        emp["jobs"].append(job_dictionary)
-    # msg("Jobs: " + str(panel_jobs_div))
-
-    # emp["job_ids"] = []
-    # if panel_jobs_div is not None:
-    #     panel_body_div = panel_jobs_div.find("div", class_="panel-body")
-    #     for div in panel_body_div.find_all("div", class_="job"):
-    #         if class_name(div) != "Tag":
-    #             continue
-    #         jid = int(div["id"][4:])
-    #         emp["job_ids"].append(jid)
-
-    # msg("Jobs: " + str(jobs))
-
-    # TODO: Panel why
-    # TODO: Panel location
-
-    # Ratings Stats ###########
-    # Right col
-
-    # Panel ratings
-    # Stars
-    # Recommended
-    # #########################
-    # emp["reviews"] = None
-
-    return emp
+    def __repr__(self):
+        return "<EmployerFeed>"
 
 
-def parse_employer_review(html):
-    bs = BeautifulSoup(html, "html.parser")
+class EmployerParser():
 
-    # cr_div = bs.find('div',class_="company-review")
-    # print(first_line(cr_div))
-    # msg('')
-    # for t in cr_div.children:
-    # msg(first_line(t))
-    # msg('')
-    # cc_div = bs.find('div',class_="row company-container")
+    def __init__(self, code):
+        self.code = code
+        self.emp = None
+        self.reviews = None
 
-    # Left column
-    left_column = bs.find("div", class_="col-md-8 col-left")
-    # print(first_line(col_left))
+    def get_url(self):
+        return app.config["TEMPLATE_EMPLOYER_URL"].format(self.code)
 
-    # ratings and reviews
-    r_n_r = {}
+    def fetch_and_parse(self):
+        url = self.get_url()
+        print("Fetching url: {}".format(url))
+        response = fetch_url(url)
+        self.emp = self.parse_employer_page(response.text)
 
-    # number of reviews
-    nav = left_column.find("ul", class_="navigation")
-    count_tag = nav.find_all("a", limit=2)[1]
-    count_tag
-    # msg("count_tag: " + str(count_tag))
-    reviews_count = count_tag.string.split(" ")[0]
-    try:
-        r_n_r["reviews_count"] = int(reviews_count)
-        # msg("reviews: " + str(r_n_r["reviews_count"]))
+    def digest(self):
+        self.emp["overview"] = "<overview len={}>".format(len(self.emp["overview"].text))
 
-        # stars: panel panel-default
-        panel_div = left_column.find("div", class_="panel panel-default")
-        rate_div = panel_div.find("p", class_="start-point")
-        if rate_div:
-            r_n_r['ratings']['overall'] = float(rate_div.string.split(" ")[0])
-            # msg("Rating overall: " + str(r_n_r['ratings']['overall']))
+        jobs = []
+        for job in self.emp["jobs"]:
+            jobs.append("<Job:{}>".format(job["url"]))
+        self.emp["jobs"] = jobs
 
-            # recommended
-            r_n_r['ratings']['recommended'] = int(panel_div.find("td")["data-rate"])
-            # msg("Recommended: " + str(r_n_r['ratings']['recommended']))
-
-            # ratings: table: ratings-specific
-            ratings_tbl = left_column.find("table", class_="ratings-specific")
-
-            for row in ratings_tbl.find_all("tr"):
-                # msg(first_line(row))
-                row.contents
-                # msg("row.contents: " + str(row.contents) )
-
-                td_name = row.contents[1].span.string
-                td_rate = row.contents[5].string.split()[0]
-
-                # msg("td_name: " + str(td_name) )
-                # msg("td_rate: " + str(td_rate) )
-
-                r_n_r['ratings'][td_name] = td_rate
-        else:
-            r_n_r['ratings']['overall'] = None
-            r_n_r['ratings']['recommended'] = None
-    except:
         pass
 
-    # reviews: panel-body content-review disable-user-select
-    review_panel_div = left_column.find(
-        "div", class_="panel-body content-review disable-user-select"
-    )
+    def fetch_and_parse_reviews(self):
+        self.reviews = []
+        feed = ReviewsFeed(self.code)
+        for review_tag in feed.reviews():
+            try:
+                self.reviews.append(ReviewParser(review_tag))
+            except:
+                print(review_tag)
 
-    r_n_r['reviews'] = []
+    def parse_employer_page(self, html):
+        '''
+        - Div: company-page
+            - Div::cover-images-desktop
+            - Div::headers hidden-xs: Info
+            - Div::row company-container
+                - Div::col-md-8 col-left
+                    - UL::navigation
+                    - Last update comment
+                    - Div::panel panel-default: Description
+                    - Jobs comment
+                    - Div::panel panel-default jobs: Jobs
+                    - Last update comment
+                    - Div::panel panel-default: Why
+                    - Our people comment
+                    - Location comment
+                    - Div::panel panel-default: Location
+                - Div::col-md-4 col-right: Reviews info
+        '''
+        bs = BeautifulSoup(html, "html.parser")
 
-    # div: company-review
-    # - Headline Photo comment
-    # - Header Information comment
-    # - div: headers hidden-xs
-    # - div: row company-container
-    #   - div: col-md-8 col-left
-    #     - Navigation comment
-    #     - ul: navigation
-    #     - Details Review Calculation comment
-    #     - panel panel-default
-    #     - Have you worked? comment
-    #     - Details Content of Review comment
-    #     - div: panel panel-default
-    #       - div: panel-body content-review disable-user-select
-    #         - First review comment
+        emp = {'code': self.code}
 
-    #         - Last updated comment
-    #         - div: content-of-review
+        company_tag = bs.div.find(class_="company-page")
 
-    #         - Last updated comment
-    #         - div: content-of-review
+        # ############################# #
+        # Company general info / Header #
+        # ############################# #
+        header_tag = company_tag.find("div", class_="headers hidden-xs")
 
-    #         - ...
+        # Logo: div::logo-container
+        logo_container_tag = header_tag.find("div", class_="logo-container")
+        logo_tag = logo_container_tag.find("img")
+        emp["logo"] = logo_tag["data-src"]
 
-    # div: content-of-review
-    # - div: short-summary row
-    # - div: details-review (blur)
-    #   - div: what-you-liked
-    #   - div: feedback
+        # c name-and-info
+        # name: h1::title
+        name_tag = header_tag.find("h1")
+        emp["name"] = name_tag.string.strip()
 
-    if review_panel_div:
-        for review_tag in review_panel_div.find_all("div", class_="content-of-review"):
-            current_review = {}
+        # location: location
+        nni_tag = header_tag.find("div", class_="name-and-info")
+        location_tag = nni_tag.find("span")
+        emp["location"] = location_tag.contents[2].strip()
 
-            # print(review_tag.previous_sibling.__class__.__name__)
-            # print(review_tag.previous_sibling.previous_sibling.__class__.__name__)
+        # Industry: span::gear-icon
+        industry_tag = header_tag.find("span", class_="gear-icon")
+        emp["industry"] = industry_tag.string.strip()
 
-            is_full_review = False
-            previous_tag = review_tag.previous_sibling.previous_sibling
-            if previous_tag.__class__.__name__ is "Comment":
-                is_full_review = True
-                current_review["last_update"] = previous_tag.string.split('"')[1]
+        # Employees: span::group-icon
+        employees_tag = header_tag.find("span", class_="group-icon")
+        emp["employees"] = employees_tag.string.strip()
 
-            # print("Is full review: {}".format(is_full_review))
-            # short summary tag
-            short_summary_tag = review_tag.find("div", class_="short-summary row")
+        # Country: div::country span::name
+        country_div = header_tag.find("div", class_="country")
+        country_span = country_div.find("span")
+        emp["country"] = country_span.string.strip()
 
-            # r.title: h3 short-title
-            title = short_summary_tag.find("h3", class_="short-title").string.strip()
-            current_review["title"] = title
+        # Working days: div::working-date span
+        w_days_div = header_tag.find("div", class_="working-date")
+        if w_days_div:
+            w_days_span = w_days_div.find("span")
+            emp["working_days"] = w_days_span.string.strip()
+        else:
+            emp["working_days"] = None
 
-            # div: stars-and-recommend
-            # r.stars
-            stars_tag = short_summary_tag.find("div", class_="stars")
+        # Overtime: div::overtime
+        overtime_div = header_tag.find("div", class_="overtime")
+        if overtime_div:
+            overtime_span = overtime_div.find("span")
+            emp["overtime"] = overtime_span.string.strip()
+        else:
+            emp["overtime"] = None
 
-            # general rating
-            round_tag = stars_tag.find("span", class_="round-rate-rating-stars-box")
-            unchecked = len(round_tag.find_all("span", class_="fa-stack unchecked"))
-            current_review["stars_total"] = 5 - unchecked
+        # ###################### #
+        # Container Left Columnn #
+        # ###################### #
 
-            # specific rating
-            stars_ul = stars_tag.find("ul", class_="hidden-sm hidden-xs detail-rating-tooltip")
-            # print(stars_ul)
-            categories = ["salary", "training", "management", "culture", "workspace"]
-            for li_tag in stars_ul.find_all("li"):
-                for span in li_tag.find_all("span", class_="round-rate-rating-bar"):
-                    unchecked = len(span.find_all("span", class_="fa fa-square unchecked"))
-                    current_review["stars_" + categories.pop(0)] = 5 - unchecked
+        left_column = company_tag.find(class_="col-md-8 col-left")
 
-            # r.recommend
-            recomend_tag = short_summary_tag.find("div", class_="recommend")
-            recomend_span = recomend_tag.find("span")
-            current_review["recommend"] = recomend_span["class"][0] == "yes"
+        # Panel description
+        # Navigation
+        # website
+        nav = left_column.find("ul", class_="navigation")
+        emp["website"] = nav.find("a", class_="ion-android-open")["href"]
 
-            # r.date
-            date = short_summary_tag.find("div", class_="date").string.strip()
-            current_review["date"] = date
+        # TODO: facebook
 
-            # details review
-            details_review_tag = review_tag.find("div", class_="details-review")
+        # Overview panel
+        overview_div = left_column.find("div", class_="panel panel-default")
+        emp["overview"] = overview_div
 
-            is_blurred = False
-            if "blur" in details_review_tag["class"]:
-                is_blurred = True
-            # print("Is blurred: {}".format(is_blurred))
+        # Jobs panel: panel panel-default jobs
+        panel_jobs_div = left_column.find("div", class_="panel panel-default jobs")
+        jobtag_iterator = JobTagIterator(panel_jobs_div)
+        emp["jobs"] = []
+        for job_tag in jobtag_iterator:
+            try:
+                job_parser = JobTagParser(job_tag)
+                job_dictionary = job_parser.get_dict()
+                emp["jobs"].append(job_dictionary)
+            except:
+                print(job_tag)
 
-            if not is_blurred:
-                # Liked
-                liked_tag = details_review_tag.find("div", class_="what-you-liked")
-                liked_paragraph = ""
-                if liked_tag:
-                    for item in liked_tag.p.contents:
-                        if item.__class__.__name__ is "NavigableString":
-                            liked_paragraph = "".join((liked_paragraph, item))
+        # TODO: Panel why
+        # TODO: Panel location
 
-                current_review["liked"] = liked_paragraph
+        # Ratings Stats ###########
+        # Right col
 
-                # Hated
-                hated_tag = details_review_tag.find("div", class_="feedback")
-                hated_paragraph = ""
-                if hated_tag:
-                    for item in hated_tag.p.contents:
-                        if item.__class__.__name__ is "NavigableString":
-                            hated_paragraph = "".join((hated_paragraph, item))
+        # Panel ratings
+        # Stars
+        # Recommended
+        # #########################
+        # emp["reviews"] = None
 
-                current_review["hated"] = hated_paragraph
-
-            r_n_r['reviews'].append(current_review)
-
-    # print(r_n_r)
-    return r_n_r
+        return emp
 
 
-class JobSummaryParser():
+class ReviewsFeed:
+
+    def __init__(self, code):
+        self.code = code
+
+    def url(self):
+        return app.config["TEMPLATE_EMPLOYER_REVIEW_URL"].format(self.code)
+
+    def __iter__(self):
+        return ReviewPageIterator(self.url())
+
+    def reviews(self):
+        for page in ReviewPageIterator(self.url()):
+            print(page)
+            for review_tag in page:
+                yield review_tag
+
+
+class ReviewPageIterator:
+
+    def __init__(self, url):
+        self.url = url
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.url is None or self.url is "":
+            raise StopIteration("Error: No URL for current iteration")
+
+        print(self.url)
+        response = fetch_url(self.url)
+        prev_url = None
+        next_url = None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        review_panel_tag = soup.find("div", class_="panel-body content-review disable-user-select")
+        pagination_tag = soup.find("ul", class_="pagination")
+
+        if pagination_tag:
+            a_tag = pagination_tag.find("a", rel="next")
+            if a_tag:
+                next_url = app.config["BASE_URL"] + a_tag["href"]
+
+        page = ReviewPage(self.url, review_panel_tag, prev_url, next_url)
+
+        self.url = next_url
+
+        return page
+
+
+class ReviewIterator:
+
+    def __init__(self, panel_tag):
+
+        self.panel_tag = panel_tag
+        self.next_block = self.panel_tag.find_next(class_="content-of-review")
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.next_block is None:
+            raise StopIteration("No more blocks in page")
+
+        block = self.next_block
+        self.next_block = self.next_block.find_next(class_="content-of-review")
+        return block
+
+
+class ReviewParser:
+
+    def __init__(self, review_tag):
+        self.review = {}
+
+        # print(review_tag.previous_sibling.__class__.__name__)
+        # print(review_tag.previous_sibling.previous_sibling.__class__.__name__)
+
+        is_full_review = False
+        previous_tag = review_tag.previous_sibling.previous_sibling
+        if previous_tag.__class__.__name__ is "Comment":
+            is_full_review = True
+            self.review["last_update"] = previous_tag.string.split('"')[1]
+
+        # print("Is full review: {}".format(is_full_review))
+        # short summary tag
+        short_summary_tag = review_tag.find("div", class_="short-summary row")
+
+        # r.title: h3 short-title
+        title = short_summary_tag.find("h3", class_="short-title").string.strip()
+        self.review["title"] = title
+
+        # div: stars-and-recommend
+        # r.stars
+        stars_tag = short_summary_tag.find("div", class_="stars")
+
+        # general rating
+        round_tag = stars_tag.find("span", class_="round-rate-rating-stars-box")
+        unchecked = len(round_tag.find_all("span", class_="fa-stack unchecked"))
+        self.review["stars_total"] = 5 - unchecked
+
+        # specific rating
+        stars_ul = stars_tag.find("ul", class_="hidden-sm hidden-xs detail-rating-tooltip")
+        # print(stars_ul)
+        categories = ["salary", "training", "management", "culture", "workspace"]
+        for li_tag in stars_ul.find_all("li"):
+            for span in li_tag.find_all("span", class_="round-rate-rating-bar"):
+                unchecked = len(span.find_all("span", class_="fa fa-square unchecked"))
+                self.review["stars_" + categories.pop(0)] = 5 - unchecked
+
+        # r.recommend
+        recomend_tag = short_summary_tag.find("div", class_="recommend")
+        recomend_span = recomend_tag.find("span")
+        self.review["recommend"] = recomend_span["class"][0] == "yes"
+
+        # r.date
+        date = short_summary_tag.find("div", class_="date").string.strip()
+        self.review["date"] = date
+
+        # details review
+        details_review_tag = review_tag.find("div", class_="details-review")
+
+        is_blurred = False
+        if "blur" in details_review_tag["class"]:
+            is_blurred = True
+        # print("Is blurred: {}".format(is_blurred))
+
+        if not is_blurred:
+            # Liked
+            liked_tag = details_review_tag.find("div", class_="what-you-liked")
+            liked_paragraph = ""
+            if liked_tag:
+                for item in liked_tag.p.contents:
+                    if item.__class__.__name__ is "NavigableString":
+                        liked_paragraph = "".join((liked_paragraph, item))
+
+            self.review["liked"] = liked_paragraph
+
+            # Hated
+            hated_tag = details_review_tag.find("div", class_="feedback")
+            hated_paragraph = ""
+            if hated_tag:
+                for item in hated_tag.p.contents:
+                    if item.__class__.__name__ is "NavigableString":
+                        hated_paragraph = "".join((hated_paragraph, item))
+
+            self.review["hated"] = hated_paragraph
+
+    def employer_reviews_parser(html):
+        bs = BeautifulSoup(html, "html.parser")
+
+        # cr_div = bs.find('div',class_="company-review")
+        # print(first_line(cr_div))
+        # msg('')
+        # for t in cr_div.children:
+        # msg(first_line(t))
+        # msg('')
+        # cc_div = bs.find('div',class_="row company-container")
+
+        # Left column
+        left_column = bs.find("div", class_="col-md-8 col-left")
+        # print(first_line(col_left))
+
+        # ratings and reviews
+        r_n_r = {}
+
+        # number of reviews
+        nav = left_column.find("ul", class_="navigation")
+        count_tag = nav.find_all("a", limit=2)[1]
+        count_tag
+        # msg("count_tag: " + str(count_tag))
+        reviews_count = count_tag.string.split(" ")[0]
+        try:
+            r_n_r["reviews_count"] = int(reviews_count)
+            # msg("reviews: " + str(r_n_r["reviews_count"]))
+
+            # stars: panel panel-default
+            panel_div = left_column.find("div", class_="panel panel-default")
+            rate_div = panel_div.find("p", class_="start-point")
+            if rate_div:
+                r_n_r['ratings']['overall'] = float(rate_div.string.split(" ")[0])
+                # msg("Rating overall: " + str(r_n_r['ratings']['overall']))
+
+                # recommended
+                r_n_r['ratings']['recommended'] = int(panel_div.find("td")["data-rate"])
+                # msg("Recommended: " + str(r_n_r['ratings']['recommended']))
+
+                # ratings: table: ratings-specific
+                ratings_tbl = left_column.find("table", class_="ratings-specific")
+
+                for row in ratings_tbl.find_all("tr"):
+                    # msg(first_line(row))
+                    row.contents
+                    # msg("row.contents: " + str(row.contents) )
+
+                    td_name = row.contents[1].span.string
+                    td_rate = row.contents[5].string.split()[0]
+
+                    # msg("td_name: " + str(td_name) )
+                    # msg("td_rate: " + str(td_rate) )
+
+                    r_n_r['ratings'][td_name] = td_rate
+            else:
+                r_n_r['ratings']['overall'] = None
+                r_n_r['ratings']['recommended'] = None
+        except:
+            pass
+
+        # reviews: panel-body content-review disable-user-select
+        review_panel_div = left_column.find(
+            "div", class_="panel-body content-review disable-user-select"
+        )
+
+        r_n_r['reviews'] = []
+
+        # div: company-review
+        # - Headline Photo comment
+        # - Header Information comment
+        # - div: headers hidden-xs
+        # - div: row company-container
+        #   - div: col-md-8 col-left
+        #     - Navigation comment
+        #     - ul: navigation
+        #     - Details Review Calculation comment
+        #     - panel panel-default
+        #     - Have you worked? comment
+        #     - Details Content of Review comment
+        #     - div: panel panel-default
+        #       - div: panel-body content-review disable-user-select
+        #         - First review comment
+
+        #         - Last updated comment
+        #         - div: content-of-review
+
+        #         - Last updated comment
+        #         - div: content-of-review
+
+        #         - ...
+
+        # div: content-of-review
+        # - div: short-summary row
+        # - div: details-review (blur)
+        #   - div: what-you-liked
+        #   - div: feedback
+
+        if review_panel_div:
+            for review_tag in review_panel_div.find_all("div", class_="content-of-review"):
+                current_review = {}
+
+                # print(review_tag.previous_sibling.__class__.__name__)
+                # print(review_tag.previous_sibling.previous_sibling.__class__.__name__)
+
+                is_full_review = False
+                previous_tag = review_tag.previous_sibling.previous_sibling
+                if previous_tag.__class__.__name__ is "Comment":
+                    is_full_review = True
+                    current_review["last_update"] = previous_tag.string.split('"')[1]
+
+                # print("Is full review: {}".format(is_full_review))
+                # short summary tag
+                short_summary_tag = review_tag.find("div", class_="short-summary row")
+
+                # r.title: h3 short-title
+                title = short_summary_tag.find("h3", class_="short-title").string.strip()
+                current_review["title"] = title
+
+                # div: stars-and-recommend
+                # r.stars
+                stars_tag = short_summary_tag.find("div", class_="stars")
+
+                # general rating
+                round_tag = stars_tag.find("span", class_="round-rate-rating-stars-box")
+                unchecked = len(round_tag.find_all("span", class_="fa-stack unchecked"))
+                current_review["stars_total"] = 5 - unchecked
+
+                # specific rating
+                stars_ul = stars_tag.find("ul", class_="hidden-sm hidden-xs detail-rating-tooltip")
+                # print(stars_ul)
+                categories = ["salary", "training", "management", "culture", "workspace"]
+                for li_tag in stars_ul.find_all("li"):
+                    for span in li_tag.find_all("span", class_="round-rate-rating-bar"):
+                        unchecked = len(span.find_all("span", class_="fa fa-square unchecked"))
+                        current_review["stars_" + categories.pop(0)] = 5 - unchecked
+
+                # r.recommend
+                recomend_tag = short_summary_tag.find("div", class_="recommend")
+                recomend_span = recomend_tag.find("span")
+                current_review["recommend"] = recomend_span["class"][0] == "yes"
+
+                # r.date
+                date = short_summary_tag.find("div", class_="date").string.strip()
+                current_review["date"] = date
+
+                # details review
+                details_review_tag = review_tag.find("div", class_="details-review")
+
+                is_blurred = False
+                if "blur" in details_review_tag["class"]:
+                    is_blurred = True
+                # print("Is blurred: {}".format(is_blurred))
+
+                if not is_blurred:
+                    # Liked
+                    liked_tag = details_review_tag.find("div", class_="what-you-liked")
+                    liked_paragraph = ""
+                    if liked_tag:
+                        for item in liked_tag.p.contents:
+                            if item.__class__.__name__ is "NavigableString":
+                                liked_paragraph = "".join((liked_paragraph, item))
+
+                    current_review["liked"] = liked_paragraph
+
+                    # Hated
+                    hated_tag = details_review_tag.find("div", class_="feedback")
+                    hated_paragraph = ""
+                    if hated_tag:
+                        for item in hated_tag.p.contents:
+                            if item.__class__.__name__ is "NavigableString":
+                                hated_paragraph = "".join((hated_paragraph, item))
+
+                    current_review["hated"] = hated_paragraph
+
+                r_n_r['reviews'].append(current_review)
+
+        # print(r_n_r)
+        return r_n_r
+
+    def __repr__(self):
+        return "<ReviewParser rec:{} rating:{} next:{}>".format(self.review["recommend"], self.review["stars_total"], self.review["title"])
+
+
+# Job #########################################################################
+class JobTagParser:
     def __init__(self, job_tag):
         self.tag = job_tag
 
@@ -377,31 +538,32 @@ class JobSummaryParser():
         return json.dumps(self.job, sort_keys=True, indent=4)
 
     def save_json(self):
-        filename = "{}/jobs/{}.json".format(config.Config.INSTANCE_DIR, self.job["id"])
+        filename = "{}/jobs/{}.json".format(app.instance_path, self.job["id"])
         with open(filename, 'w') as json_file:
             json.dump(self.job, json_file, sort_keys=True, indent=4)
 
 
-# EmployerFeed #################################################
-class EmployerFeed():
+class JobsFeed:
+    '''JobsFeed can iterate over pages or over all job blocks over all pages.
 
-    def __init__(self, **kwargs):
-        self.url = current_app.config["EMPLOYERS_JSON_URL"]
-        # self.json = fetch_url(self.url).json()
-        self.response = fetch_url(self.url)
-        self.json = self.response.json()
-        # print(self.json)
-        # self.json = json.load(json_string)
+    pages() is the page iterator returns Page objects on iterations:
 
-    def __len__(self):
-        return len(self.json)
+    feed = JobsFeed()
+    for page in feed.pages():
+        print(page)
 
-    def __repr__(self):
-        return "<EmployerFeed>"
+    job_tags() is the job iterator, returns BeautifulSoup Tag objects
 
+    feed = JobsFeed()
+    for job_tag in feed.job_tags():
+        print(job_tag)
 
-# JobsFeed #################################################
-class JobsFeed():
+    The default iterator is over pages:
+
+    feed = JobsFeed()
+    for page in feed:
+        print(page)
+    '''
 
     def __init__(self, **kwargs):
         self.location = ''
@@ -414,7 +576,7 @@ class JobsFeed():
             self.tags = kwargs['tags']
 
     def url(self):
-        feed_url = current_app.config["URL"]
+        feed_url = app.config["JOBS_URL"]
         if self.tags:
             feed_url = feed_url + '/' + '-'.join(self.tags)
         if self.location:
@@ -425,19 +587,18 @@ class JobsFeed():
         return "<Feed location='{}' tags='{}'>".format(self.location, self.tags)
 
     def __iter__(self):
-        return PageIterator(self.url())
+        return JobPageIterator(self.url())
 
     def pages(self):
-        return PageIterator(self.url())
+        return JobPageIterator(self.url())
 
     def job_tags(self):
-        for page in PageIterator(self.url()):
+        for page in JobPageIterator(self.url()):
             for job_tag in page:
                 yield job_tag
 
 
-# PageIterator #################################################
-class PageIterator:
+class JobPageIterator:
     def __init__(self, url):
         self.url = url
 
@@ -445,11 +606,9 @@ class PageIterator:
         return self
 
     def __next__(self):
-        # Check if there is a url
         if self.url is None or self.url is "":
             raise StopIteration("Error: No URL for current iteration")
 
-        # Fetch page
         response = fetch_url(self.url)
         resp_json = response.json()
 
@@ -477,17 +636,14 @@ class PageIterator:
             break
 
         # Build page
-        page = Page(self.url, resp_json["jobs_html"], prev_url, next_url)
-        # print("Page in It: " + str(page))
+        page = JobPage(self.url, resp_json["jobs_html"], prev_url, next_url)
 
         self.url = next_url
 
-        # Return html page
         return page
 
 
-# Page ####################################################
-class Page:
+class JobPage:
     def __init__(self, url, content, prev_p, next_p):
         self.url = url
         self.content = content
@@ -495,13 +651,14 @@ class Page:
         self.next_p = next_p
 
     def __iter__(self):
-        return JobIteratorInPage(self.content)
+        return JobTagIterator(self.content)
 
     def __repr__(self):
         return "<Page url:{} prev:{} next:{}>".format(self.url, self.prev_p, self.next_p)
 
 
-class JobIteratorInPage:
+class JobTagIterator:
+
     def __init__(self, content):
         if content is None:
             raise Exception("Page is empty")
@@ -509,29 +666,24 @@ class JobIteratorInPage:
             self.job_panel_tag = BeautifulSoup(content, "html.parser")
         elif content.__class__.__name__ is "Tag":
             self.job_panel_tag = content
-        # print( "Soup class: " + str(type(self.soup)) )
 
-        # self.div = self.soup.div
-        # print( "div tag class: " + str(type(self.div)) )
-
-        # self.next_block = self.div.find_next(class_="job")
         self.next_block = self.job_panel_tag.find_next(class_="job")
-        # print( "self.next_block class: " + str(type(self.next_block)) )
-        # print("Next block: " + str(self.next_block).splitlines()[0])
 
     def __next__(self):
-        # Check if there is a block
         if self.next_block is None:
             raise StopIteration("No more blocks in page")
 
-        # job = Job.from_summary(self.next_block)
         job_block = self.next_block
-
         self.next_block = self.next_block.find_next(class_="job")
-        # ~ print("Next block: "+str(self.next_block).splitlines()[0])
-
         return job_block
-        # return job
 
     def __iter__(self):
         return self
+
+
+class ReviewPage(JobPage):
+    def __iter__(self):
+        return ReviewIterator(self.content)
+
+    def __repr__(self):
+        return "<ReviewPage url:{} next:{}>".format(self.url, self.next_p)
