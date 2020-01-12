@@ -1,12 +1,7 @@
 from flask import Blueprint, render_template
-from flask import current_app as app
 
-# import itviec.ItViec as ItViec
 from itviec.db import db
 from itviec.models import Job, Tag, JobTag, Address
-
-# for debugging
-from pprint import pprint
 
 bp = Blueprint('itviec', __name__, cli_group=None)
 
@@ -65,7 +60,7 @@ def tags():
 
     result = []
     for (tag, count) in query:
-        perc = (count/jobs)*100
+        perc = (count / jobs) * 100
         result.append((tag, count, round(perc, 2)))
 
     return render_template("tags.html", tags=result)
