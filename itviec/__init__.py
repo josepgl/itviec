@@ -31,6 +31,7 @@ def create_app(profile=None, test_config=None):
     import itviec.cmd_views
     app.register_blueprint(itviec.cmd_views.cmd_bp)
     app.register_blueprint(itviec.cmd_views.job_bp)
+    app.register_blueprint(itviec.cmd_views.emp_bp)
 
     if app.config['ENV'] != 'production':
         from . import dev

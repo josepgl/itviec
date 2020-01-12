@@ -14,6 +14,7 @@ from pprint import pprint
 
 cmd_bp = Blueprint('itviec_cmd', __name__, cli_group=None)
 job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
+emp_bp = Blueprint('itviec_cmd_employer', __name__, cli_group="employer")
 
 
 @cmd_bp.cli.command('stats')
@@ -51,20 +52,6 @@ def update_db():
                     # itv.add_job(job)
 
     itv.close()
-
-
-@cmd_bp.cli.command('test-job')
-@click.argument('jid')
-def test_job(jid):
-    print(Job.request_job(jid))
-
-
-@cmd_bp.cli.command('test-emp')
-@click.argument('code')
-def test_emp(code):
-    employer = Employer.request_employer(code)
-    # print(employer)
-    pprint(employer.__dict__)
 
 
 @cmd_bp.cli.command('test-emp-feed')
@@ -119,6 +106,18 @@ def tags_count():
     query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
     print(query)
     query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
+    print(query)
+    for row in query:
+        print(row)
+
+
+@cmd_bp.cli.command('employers-jobs-count')
+def employers_jobs_count():
+    from sqlalchemy import func, desc
+
+    query = db.session.query(Job.employer_code, func.count(Job.employer_code).label('count'))
+    print(query)
+    query = query.group_by(Job.employer_code).order_by(desc("count")).limit(100)
     print(query)
     for row in query:
         print(row)
@@ -181,3 +180,19 @@ def job_json_dict(max=None):
     db.session.commit()
 
     return None
+
+
+@job_bp.cli.command('show')
+@click.argument('jid')
+def job_show(jid):
+    pprint(Job.query.filter(Job.id == jid).first().__dict__)
+
+
+# employer ############################################################
+@emp_bp.cli.command('test')
+@click.argument('code')
+def test_emp(code):
+    employer = Employer.request_employer(code)
+    # emp_instance = Employer.request_employer(code)
+    # print(employer)
+    pprint(employer.__dict__)
