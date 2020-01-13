@@ -662,10 +662,10 @@ class JobTagIterator:
     def __init__(self, content):
         if content is None:
             raise Exception("Page is empty")
-        elif content.__class__.__name__ is "str":
-            self.job_panel_tag = BeautifulSoup(content, "html.parser")
         elif content.__class__.__name__ is "Tag":
             self.job_panel_tag = content
+        else:
+            self.job_panel_tag = BeautifulSoup(content, "html.parser")
 
         self.next_block = self.job_panel_tag.find_next(class_="job")
 
