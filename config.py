@@ -26,7 +26,7 @@ class Config:
 
     # ItViec urls
     BASE_URL = "https://itviec.com"
-    URL = "https://itviec.com/it-jobs"
+    JOBS_URL = "https://itviec.com/it-jobs"
     EMPLOYERS_JSON_URL = "https://itviec.com/api/v1/employers.json"
     TEMPLATE_EMPLOYER_URL = "https://itviec.com/companies/{}"
     TEMPLATE_EMPLOYER_REVIEW_URL = "https://itviec.com/companies/{}/review"
