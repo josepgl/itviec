@@ -32,8 +32,6 @@ class Database():
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
         self.set_uri(uri)
 
-        print("Enabling close session on app context teardown")
-
         @app.teardown_appcontext
         def close_session(exception=None):
             db.session.remove()
