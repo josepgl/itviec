@@ -182,7 +182,7 @@ def test_emp(code):
     employer_p = itviec.parsers.EmployerParser(code)
     employer_p.fetch_and_parse()
     employer_p.digest()
-    employer_p.fetch_and_parse_reviews()
+    # employer_p.fetch_and_parse_reviews()
 
-    # pprint(employer_p.__dict__)
-    pprint(employer_p.reviews)
+    pprint(employer_p.__dict__)
+    # pprint(employer_p.reviews)
