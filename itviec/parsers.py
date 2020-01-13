@@ -87,49 +87,56 @@ class EmployerParser:
         # ############################# #
         header_tag = company_tag.find("div", class_="headers hidden-xs")
 
-        # Logo: div::logo-container
-        logo_container_tag = header_tag.find("div", class_="logo-container")
-        logo_tag = logo_container_tag.find("img")
-        emp["logo"] = logo_tag["data-src"]
+        def _parse_header(header_tag):
+            emp = {}
 
-        # c name-and-info
-        # name: h1::title
-        name_tag = header_tag.find("h1")
-        emp["name"] = name_tag.string.strip()
+            # Logo: div::logo-container
+            logo_container_tag = header_tag.find("div", class_="logo-container")
+            logo_tag = logo_container_tag.find("img")
+            emp["logo"] = logo_tag["data-src"]
 
-        # location: location
-        nni_tag = header_tag.find("div", class_="name-and-info")
-        location_tag = nni_tag.find("span")
-        emp["location"] = location_tag.contents[2].strip()
+            # c name-and-info
+            # name: h1::title
+            name_tag = header_tag.find("h1")
+            emp["name"] = name_tag.string.strip()
 
-        # Industry: span::gear-icon
-        industry_tag = header_tag.find("span", class_="gear-icon")
-        emp["industry"] = industry_tag.string.strip()
+            # location: location
+            nni_tag = header_tag.find("div", class_="name-and-info")
+            location_tag = nni_tag.find("span")
+            emp["location"] = location_tag.contents[2].strip()
 
-        # Employees: span::group-icon
-        employees_tag = header_tag.find("span", class_="group-icon")
-        emp["employees"] = employees_tag.string.strip()
+            # Industry: span::gear-icon
+            industry_tag = header_tag.find("span", class_="gear-icon")
+            emp["industry"] = industry_tag.string.strip()
 
-        # Country: div::country span::name
-        country_div = header_tag.find("div", class_="country")
-        country_span = country_div.find("span")
-        emp["country"] = country_span.string.strip()
+            # Employees: span::group-icon
+            employees_tag = header_tag.find("span", class_="group-icon")
+            emp["employees"] = employees_tag.string.strip()
 
-        # Working days: div::working-date span
-        w_days_div = header_tag.find("div", class_="working-date")
-        if w_days_div:
-            w_days_span = w_days_div.find("span")
-            emp["working_days"] = w_days_span.string.strip()
-        else:
-            emp["working_days"] = None
+            # Country: div::country span::name
+            country_div = header_tag.find("div", class_="country")
+            country_span = country_div.find("span")
+            emp["country"] = country_span.string.strip()
 
-        # Overtime: div::overtime
-        overtime_div = header_tag.find("div", class_="overtime")
-        if overtime_div:
-            overtime_span = overtime_div.find("span")
-            emp["overtime"] = overtime_span.string.strip()
-        else:
-            emp["overtime"] = None
+            # Working days: div::working-date span
+            w_days_div = header_tag.find("div", class_="working-date")
+            if w_days_div:
+                w_days_span = w_days_div.find("span")
+                emp["working_days"] = w_days_span.string.strip()
+            else:
+                emp["working_days"] = None
+
+            # Overtime: div::overtime
+            overtime_div = header_tag.find("div", class_="overtime")
+            if overtime_div:
+                overtime_span = overtime_div.find("span")
+                emp["overtime"] = overtime_span.string.strip()
+            else:
+                emp["overtime"] = None
+
+            return emp
+
+        emp.update(_parse_header(header_tag))
 
         # ###################### #
         # Container Left Columnn #
