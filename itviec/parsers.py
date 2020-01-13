@@ -78,7 +78,7 @@ class EmployerParser:
         '''
         bs = BeautifulSoup(html, "html.parser")
 
-        emp = {'code': self.code}
+        emp = {'code': self.code, "jobs": [], "why": {}, "locations": []}
 
         company_tag = bs.div.find(class_="company-page")
 
@@ -143,95 +143,103 @@ class EmployerParser:
         # ###################### #
 
         left_column = company_tag.find(class_="col-md-8 col-left")
+        for child in left_column.children:
+            if child.__class__.__name__ is 'Comment':
+                if child.string.startswith(" Last updated:"):
+                    last_upd = child.string
+                    emp["last_updated"] = last_upd[last_upd.find('"') + 1:-1]
+                    break
 
-        # Panel description
+        # ############## #
+        # Overview Panel #
+        # ############## #
+
         # Navigation
-        # website
         nav = left_column.find("ul", class_="navigation")
+        reviews_count = nav.select("li.review-tab")[0].find("a").string
+        emp["review_count"] = int(reviews_count.replace("Reviews", "") or 0)
         emp["website"] = nav.find("a", class_="ion-android-open")["href"]
 
-        # TODO: facebook
+        emp["review_ratings"] = None
+        emp["review_recommend"] = None
+
+        try:
+            ratings_panel = company_tag.select("div.company-ratings")[0]
+
+            ratings_tag = ratings_panel.find("span", "company-ratings__star-point")
+            emp["review_ratings"] = float(ratings_tag.string)
+
+            recommend_tag = ratings_panel.find("td", "chart")
+            emp["review_recommend"] = int(recommend_tag["data-rate"])
+        except AttributeError:
+            pass
 
         # Overview panel
         overview_div = left_column.find("div", class_="panel panel-default")
         emp["overview"] = overview_div
 
-        # Jobs panel: panel panel-default jobs
-        panel_jobs_div = left_column.find("div", class_="panel panel-default jobs")
-        jobtag_iterator = JobTagIterator(panel_jobs_div)
-        emp["jobs"] = []
-        for job_tag in jobtag_iterator:
-            try:
-                job_parser = JobTagParser(job_tag)
-                job_dictionary = job_parser.get_dict()
-                emp["jobs"].append(job_dictionary)
-            except:
-                print(job_tag)
-
-        # panel: "Why You'll Love Working Here"
-        emp["why"] = {}
-        emp["locations"] = []
-        why_title = "Why You'll Love Working Here"
-        locations_title = "Locations"
-
-        for panel_tag in left_column.find_all("div", class_="panel panel-default"):
-            header_tag = panel_tag.find("h3")
+        for panel_tag in left_column.select("div.panel-default"):
+            header_tag = panel_tag.select("div.panel-heading")[0]
             panel_header_text = header_tag.text.strip()
 
+            # Jobs panel
+            if panel_header_text == "Jobs":
+                jobtag_iterator = JobTagIterator(panel_tag)
+                for job_tag in jobtag_iterator:
+                    try:
+                        emp["jobs"].append(JobTagParser(job_tag).get_dict())
+                    except:
+                        print(job_tag)
+
             # Why panel
-            if panel_header_text == why_title:
-                emp["why"]["reasons"] = []
-                emp["why"]["environment"] = []
-                emp["why"]["list"] = []
-                panel_body_tag = panel_tag.find("div", class_="panel-body")
+            if panel_header_text == "Why You'll Love Working Here":
 
-                # Reasons
-                reasons_tag = panel_body_tag.find("ul", class_="reasons numbered list")
-                for li_tag in reasons_tag.find_all("li", class_="item"):
-                    span_tag = li_tag.find("span", class_="content paragraph")
-                    emp["why"]["reasons"].append(span_tag.text)
+                def _parse_why_panel(panel_tag):
 
-                # Environment
-                carourel_tag = panel_body_tag.find("div", class_="carousel-inner")
-                for img_div in carourel_tag.find_all("div", class_="img"):
-                    if img_div.__class__.__name__ != "Tag":
-                        continue
-                    style = img_div["style"]
-                    url = style[style.find("(") + 1:style.find(")")]
-                    clean_url = url[0:url.find("?")]
-                    caption = ""
-                    for sibling_tag in img_div.next_siblings:
-                        if sibling_tag.__class__.__name__ != "Tag":
+                    why = {"reasons": [], "environment": [], "list": []}
+
+                    panel_body_tag = panel_tag.find("div", class_="panel-body")
+
+                    # Reasons
+                    reasons_tag = panel_body_tag.find("ul", class_="reasons numbered list")
+                    for li_tag in reasons_tag.find_all("li", class_="item"):
+                        span_tag = li_tag.find("span", class_="content paragraph")
+                        why["reasons"].append(span_tag.text)
+
+                    # Environment
+                    carourel_tag = panel_body_tag.find("div", class_="carousel-inner")
+                    for img_div in carourel_tag.find_all("div", class_="img"):
+                        if img_div.__class__.__name__ != "Tag":
                             continue
-                        caption = sibling_tag.text
-                        break
-                    emp["why"]["environment"].append({"label": caption, "img": clean_url})
+                        style = img_div["style"]
+                        url = style[style.find("(") + 1:style.find(")")]
+                        clean_url = url[0:url.find("?")]
+                        caption = ""
+                        for sibling_tag in img_div.next_siblings:
+                            if sibling_tag.__class__.__name__ != "Tag":
+                                continue
+                            caption = sibling_tag.text
+                            break
+                        why["environment"].append({"label": caption, "img": clean_url})
 
-                # List
-                paragraph_tag = panel_body_tag.find("div", class_="paragraph")
-                for li_tag in paragraph_tag.find_all("li"):
-                    emp["why"]["list"].append(li_tag.text)
+                    # List
+                    paragraph_tag = panel_body_tag.find("div", class_="paragraph")
+                    for li_tag in paragraph_tag.find_all("li"):
+                        why["list"].append(li_tag.text)
+
+                    return why
+
+                emp["why"] = _parse_why_panel(panel_tag)
 
             # Locations panel
-            if panel_header_text == locations_title:
+            if panel_header_text == "Locations":
                 location_column = panel_tag.find("div", class_="col-md-3 hidden-xs")
 
                 for address_tag in location_column.select("div.full-address"):
-                    full_address = ""
-                    for addr_part in address_tag.strings:
-                        full_address = ", ".join((full_address, addr_part))
-                    full_address = full_address[3:-1]
+                    addr_parts = [addr_part for addr_part in address_tag.strings]
+                    full_address = ", ".join(addr_parts).strip()
 
                     emp["locations"].append(full_address)
-
-        # Ratings Stats ###########
-        # Right col
-
-        # Panel ratings
-        # Stars
-        # Recommended
-        # #########################
-        # emp["reviews"] = None
 
         return emp
 
