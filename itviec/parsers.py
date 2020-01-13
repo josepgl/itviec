@@ -163,23 +163,25 @@ class EmployerParser:
 
         # panel: "Why You'll Love Working Here"
         emp["why"] = {}
+        emp["locations"] = []
         why_title = "Why You'll Love Working Here"
-        # for panel_tag in left_column.find_all("div", class_="panel panel-default"):
+        locations_title = "Locations"
+
         for panel_tag in left_column.find_all("div", class_="panel panel-default"):
             header_tag = panel_tag.find("h3")
             panel_header_text = header_tag.text.strip()
+
+            # Why panel
             if panel_header_text == why_title:
                 emp["why"]["reasons"] = []
                 emp["why"]["environment"] = []
                 emp["why"]["list"] = []
                 panel_body_tag = panel_tag.find("div", class_="panel-body")
-                # print(panel_body_tag)
 
                 # Reasons
                 reasons_tag = panel_body_tag.find("ul", class_="reasons numbered list")
                 for li_tag in reasons_tag.find_all("li", class_="item"):
                     span_tag = li_tag.find("span", class_="content paragraph")
-                    print(span_tag.text)
                     emp["why"]["reasons"].append(span_tag.text)
 
                 # Environment
@@ -203,8 +205,17 @@ class EmployerParser:
                 for li_tag in paragraph_tag.find_all("li"):
                     emp["why"]["list"].append(li_tag.text)
 
+            # Locations panel
+            if panel_header_text == locations_title:
+                location_column = panel_tag.find("div", class_="col-md-3 hidden-xs")
 
-        # TODO: Panel location
+                for address_tag in location_column.select("div.full-address"):
+                    full_address = ""
+                    for addr_part in address_tag.strings:
+                        full_address = ", ".join((full_address, addr_part))
+                    full_address = full_address[3:-1]
+
+                    emp["locations"].append(full_address)
 
         # Ratings Stats ###########
         # Right col
