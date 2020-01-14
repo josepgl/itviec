@@ -257,6 +257,23 @@ class EmployerParser:
 
         return emp
 
+    def get_dict(self):
+        return self.emp
+
+    def get_full_dict(self):
+        temp = {}
+        temp.update(self.emp)
+        temp["reviews"] = self.reviews
+        return temp
+
+    def get_json(self):
+        return json.dumps(self.emp, sort_keys=True, indent=4)
+
+    def save_json(self):
+        filename = "{}/employers/{}.json".format(app.instance_path, self.emp["code"])
+        with open(filename, 'w') as json_file:
+            json.dump(self.emp, json_file, sort_keys=True, indent=4)
+
 
 class ReviewsFeed:
 
