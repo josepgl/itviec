@@ -180,9 +180,10 @@ def job_show(jid):
 def parse_job(code):
     job_p = itviec.parsers.JobParser(code)
     job_p.fetch_and_parse()
-    # job_p.digest()
+    job_d = job_p.digest()
 
-    pprint(job_p.__dict__)
+    pprint(job_d)
+    # pprint(job_p.job)
 
 
 # employer ############################################################

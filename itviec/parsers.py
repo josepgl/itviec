@@ -59,8 +59,7 @@ class EmployerParser:
                 print(review_tag)
 
     def parse_employer_page(self, html):
-        '''
-        - Div: company-page
+        '''Div: company-page
             - Div::cover-images-desktop
             - Div::headers hidden-xs: Info
             - Div::row company-container
@@ -616,6 +615,84 @@ class ReviewParser:
 
 
 # Job #########################################################################
+class JobParser:
+    def __init__(self, job_code):
+        self.code = job_code
+        self.job = None
+
+    def get_url(self):
+        return "/".join((app.config["JOBS_URL"], self.code))
+
+    def fetch_and_parse(self):
+        print("Fetching url: {}".format(self.get_url()))
+        response = fetch_url(self.get_url())
+        self.job = self.parse_job_page(response.text)
+
+    def parse_job_page(self, html):
+        '''div: content
+            - Comment: last updated
+            - div: main-entity
+              - div: job-detail
+                - div: header
+                - div: job_reason_to_join_us
+                - div: job_description
+                - div: skills_experience
+                - div: love_working_here
+        '''
+        job = {
+            "id": None,
+            "code": self.code,
+            # "reasons": None,
+            # "description": None,
+            # "skills_experience": None,
+            # "why": None,
+        }
+
+        soup = BeautifulSoup(html, "html.parser")
+        div_content = soup.find("div", class_="content")
+        job_detail = div_content.find("div", class_="job-detail")
+
+        last_upd = div_content.contents[1].string
+        job["last_updated"] = last_upd[last_upd.find('"') + 1:-1]
+
+        # Header
+        # - job_info
+        #   - h1: job_title
+        #   - tag-list
+        #   - salary
+        #   - address
+        header = job_detail.find("div", class_="header")
+        job["title"] = header.find("h1", class_="job_title").string.strip()
+        tag_list = header.find("div", class_="tag-list")
+        job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
+        job["salary"] = header.find("span", class_="salary-text").string.strip()
+        job["address"] = "".join(header.find("div", class_="address__full-address").strings).strip()
+
+        reasons = job_detail.find("div", class_="job_reason_to_join_us")
+        job["reasons"] = str(reasons)
+
+        description = job_detail.find("div", class_="job_description")
+        job["description"] = str(description)
+
+        skills_experience = job_detail.find("div", class_="skills_experience")
+        job["skills_experience"] = str(skills_experience)
+
+        why = job_detail.find("div", class_="love_working_here")
+        job["why"] = str(why)
+
+        return job
+
+    def digest(self):
+        temp = {}
+        temp.update(self.job)
+        for key in temp:
+            if temp[key].__class__.__name__ == "str":
+                value_len = len(temp[key])
+                if value_len > 100:
+                    temp[key] = "<{} len:{}>".format(key, value_len)
+        return temp
+
+
 class JobTagParser:
     def __init__(self, job_tag):
         self.tag = job_tag
