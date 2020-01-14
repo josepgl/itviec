@@ -46,8 +46,6 @@ class EmployerParser:
             jobs.append("<Job:{}>".format(job["url"]))
         self.emp["jobs"] = jobs
 
-        pass
-
     def fetch_and_parse_reviews(self):
         self.reviews = []
         feed = ReviewsFeed(self.code)
@@ -177,6 +175,10 @@ class EmployerParser:
         # Overview panel
         overview_div = left_column.find("div", class_="panel panel-default")
         emp["overview"] = overview_div
+        skills_tag = overview_div.find("ul", class_="employer-skills")
+        emp["tags"] = []
+        for skill_link in skills_tag.find_all("a"):
+            emp["tags"].append(skill_link.string)
 
         for panel_tag in left_column.select("div.panel-default"):
             header_tag = panel_tag.select("div.panel-heading")[0]
