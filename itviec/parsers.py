@@ -86,66 +86,7 @@ class EmployerParser:
         # Company general info / Header #
         # ############################# #
         header_tag = company_tag.select("div.headers.hidden-xs")[0]
-
-        def _parse_header(header_tag):
-            emp = {}
-
-            # Logo: div::logo-container
-            logo_container_tag = header_tag.find("div", class_="logo-container")
-            logo_tag = logo_container_tag.find("img")
-            emp["logo"] = logo_tag["data-src"]
-
-            # c name-and-info
-            # name: h1::title
-            name_tag = header_tag.find("h1")
-            emp["name"] = name_tag.string.strip()
-
-            # location: location
-            nni_tag = header_tag.find("div", class_="name-and-info")
-            location_tag = nni_tag.find("span")
-            emp["location"] = location_tag.contents[2].strip()
-
-            # Industry: span::gear-icon
-            industry_tag = header_tag.find("span", class_="gear-icon")
-            if industry_tag:
-                emp["industry"] = industry_tag.string.strip()
-            else:
-                emp["industry"] = None
-
-            # Employees: span::group-icon
-            employees_tag = header_tag.find("span", class_="group-icon")
-            if employees_tag:
-                emp["employees"] = employees_tag.string.strip()
-            else:
-                emp["employees"] = None
-
-            # Country: div::country span::name
-            country_div = header_tag.find("div", class_="country")
-            if country_div:
-                country_span = country_div.find("span")
-                emp["country"] = country_span.string.strip()
-            else:
-                emp["country"] = None
-
-            # Working days: div::working-date span
-            w_days_div = header_tag.find("div", class_="working-date")
-            if w_days_div:
-                w_days_span = w_days_div.find("span")
-                emp["working_days"] = w_days_span.string.strip()
-            else:
-                emp["working_days"] = None
-
-            # Overtime: div::overtime
-            overtime_div = header_tag.find("div", class_="overtime")
-            if overtime_div:
-                overtime_span = overtime_div.find("span")
-                emp["overtime"] = overtime_span.string.strip()
-            else:
-                emp["overtime"] = None
-
-            return emp
-
-        emp.update(_parse_header(header_tag))
+        emp.update(self._parse_header(header_tag))
 
         # ###################### #
         # Container Left Columnn #
@@ -203,51 +144,7 @@ class EmployerParser:
 
             # Why panel
             if panel_header_text == "Why You'll Love Working Here":
-
-                def _parse_why_panel(panel_tag):
-
-                    why = {"reasons": [], "environment": [], "paragraph": []}
-
-                    panel_body_tag = panel_tag.find("div", class_="panel-body")
-
-                    # Reasons
-                    reasons_tag = panel_body_tag.find("ul", class_="reasons numbered list")
-                    for li_tag in reasons_tag.find_all("li", class_="item"):
-                        span_tag = li_tag.find("span", class_="content paragraph")
-                        why["reasons"].append(span_tag.text)
-
-                    # Environment
-                    carousel_tag = panel_body_tag.find("div", class_="carousel-inner")
-                    if carousel_tag:
-                        for img_div in carousel_tag.find_all("div", class_="img"):
-                            if img_div.__class__.__name__ != "Tag":
-                                continue
-                            if "style" in img_div.attrs:
-                                # get img
-                                style = img_div["style"]
-                                url = style[style.find("(") + 1:style.find(")")]
-                                img_url = url[0:url.find("?")]
-
-                                # get caption
-                                caption = ""
-                                for sibling_tag in img_div.next_siblings:
-                                    if sibling_tag.__class__.__name__ != "Tag":
-                                        continue
-                                    caption = sibling_tag.text
-                                    break
-
-                                why["environment"].append({"img": img_url, "caption": caption})
-                            else:
-                                why["environment"].append({"tag": str(img_div.contents[1])})
-
-                    # Paragraph
-                    paragraph_tag = panel_body_tag.find("div", class_="paragraph")
-                    why["paragraph"] = str(paragraph_tag)
-                    # why["paragraph"] = "".join(str(paragraph_tag.contents))
-
-                    return why
-
-                emp["why"] = _parse_why_panel(panel_tag)
+                emp["why"] = self._parse_why_panel(panel_tag)
 
             # Locations panel
             if panel_header_text == "Our People":
@@ -264,6 +161,107 @@ class EmployerParser:
                     emp["locations"].append(full_address)
 
         return emp
+
+    def _parse_header(self, header_tag):
+        emp = {}
+
+        # Logo: div::logo-container
+        logo_container_tag = header_tag.find("div", class_="logo-container")
+        logo_tag = logo_container_tag.find("img")
+        emp["logo"] = logo_tag["data-src"]
+
+        # c name-and-info
+        # name: h1::title
+        name_tag = header_tag.find("h1")
+        emp["name"] = name_tag.string.strip()
+
+        # location: location
+        nni_tag = header_tag.find("div", class_="name-and-info")
+        location_tag = nni_tag.find("span")
+        emp["location"] = location_tag.contents[2].strip()
+
+        # Industry: span::gear-icon
+        industry_tag = header_tag.find("span", class_="gear-icon")
+        if industry_tag:
+            emp["industry"] = industry_tag.string.strip()
+        else:
+            emp["industry"] = None
+
+        # Employees: span::group-icon
+        employees_tag = header_tag.find("span", class_="group-icon")
+        if employees_tag:
+            emp["employees"] = employees_tag.string.strip()
+        else:
+            emp["employees"] = None
+
+        # Country: div::country span::name
+        country_div = header_tag.find("div", class_="country")
+        if country_div:
+            country_span = country_div.find("span")
+            emp["country"] = country_span.string.strip()
+        else:
+            emp["country"] = None
+
+        # Working days: div::working-date span
+        w_days_div = header_tag.find("div", class_="working-date")
+        if w_days_div:
+            w_days_span = w_days_div.find("span")
+            emp["working_days"] = w_days_span.string.strip()
+        else:
+            emp["working_days"] = None
+
+        # Overtime: div::overtime
+        overtime_div = header_tag.find("div", class_="overtime")
+        if overtime_div:
+            overtime_span = overtime_div.find("span")
+            emp["overtime"] = overtime_span.string.strip()
+        else:
+            emp["overtime"] = None
+
+        return emp
+
+    def _parse_why_panel(self, panel_tag):
+
+        why = {"reasons": [], "environment": [], "paragraph": []}
+
+        panel_body_tag = panel_tag.find("div", class_="panel-body")
+
+        # Reasons
+        reasons_tag = panel_body_tag.find("ul", class_="reasons numbered list")
+        for li_tag in reasons_tag.find_all("li", class_="item"):
+            span_tag = li_tag.find("span", class_="content paragraph")
+            why["reasons"].append(span_tag.text)
+
+        # Environment
+        carousel_tag = panel_body_tag.find("div", class_="carousel-inner")
+        if carousel_tag:
+            for img_div in carousel_tag.find_all("div", class_="img"):
+                if img_div.__class__.__name__ != "Tag":
+                    continue
+                if "style" in img_div.attrs:
+                    # get img
+                    style = img_div["style"]
+                    url = style[style.find("(") + 1:style.find(")")]
+                    img_url = url[0:url.find("?")]
+
+                    # get caption
+                    caption = ""
+                    for sibling_tag in img_div.next_siblings:
+                        if sibling_tag.__class__.__name__ != "Tag":
+                            continue
+                        caption = sibling_tag.text
+                        break
+
+                    why["environment"].append({"img": img_url, "caption": caption})
+                else:
+                    why["environment"].append({"tag": str(img_div.contents[1])})
+
+        # Paragraph
+        paragraph_tag = panel_body_tag.find("div", class_="paragraph")
+        why["paragraph"] = str(paragraph_tag)
+        # why["paragraph"] = "".join(str(paragraph_tag.contents))
+
+        return why
 
     def get_dict(self):
         return self.emp
