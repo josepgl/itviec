@@ -158,7 +158,7 @@ class EmployerParser:
         emp["review_count"] = int(reviews_count.replace("Reviews", "") or 0)
         emp["website"] = nav.find("a", class_="ion-android-open")["href"]
 
-        emp["review_ratings"] = None
+        emp["review_rate"] = None
         emp["review_recommend"] = None
 
         try:
@@ -198,7 +198,7 @@ class EmployerParser:
 
                 def _parse_why_panel(panel_tag):
 
-                    why = {"reasons": [], "environment": [], "list": []}
+                    why = {"reasons": [], "environment": [], "paragraph": []}
 
                     panel_body_tag = panel_tag.find("div", class_="panel-body")
 
@@ -209,29 +209,41 @@ class EmployerParser:
                         why["reasons"].append(span_tag.text)
 
                     # Environment
-                    carourel_tag = panel_body_tag.find("div", class_="carousel-inner")
-                    for img_div in carourel_tag.find_all("div", class_="img"):
-                        if img_div.__class__.__name__ != "Tag":
-                            continue
-                        style = img_div["style"]
-                        url = style[style.find("(") + 1:style.find(")")]
-                        clean_url = url[0:url.find("?")]
-                        caption = ""
-                        for sibling_tag in img_div.next_siblings:
-                            if sibling_tag.__class__.__name__ != "Tag":
+                    carousel_tag = panel_body_tag.find("div", class_="carousel-inner")
+                    if carousel_tag:
+                        for img_div in carousel_tag.find_all("div", class_="img"):
+                            if img_div.__class__.__name__ != "Tag":
                                 continue
-                            caption = sibling_tag.text
-                            break
-                        why["environment"].append({"label": caption, "img": clean_url})
+                            if "style" in img_div.attrs:
+                                # get img
+                                style = img_div["style"]
+                                url = style[style.find("(") + 1:style.find(")")]
+                                img_url = url[0:url.find("?")]
 
-                    # List
+                                # get caption
+                                caption = ""
+                                for sibling_tag in img_div.next_siblings:
+                                    if sibling_tag.__class__.__name__ != "Tag":
+                                        continue
+                                    caption = sibling_tag.text
+                                    break
+
+                                why["environment"].append({"img": img_url, "caption": caption})
+                            else:
+                                why["environment"].append({"tag": str(img_div.contents[1])})
+
+                    # Paragraph
                     paragraph_tag = panel_body_tag.find("div", class_="paragraph")
-                    for li_tag in paragraph_tag.find_all("li"):
-                        why["list"].append(li_tag.text)
+                    why["paragraph"] = paragraph_tag
+                    # why["paragraph"] = "".join(str(paragraph_tag.contents))
 
                     return why
 
                 emp["why"] = _parse_why_panel(panel_tag)
+
+            # Locations panel
+            if panel_header_text == "Our People":
+                emp["our_people"] = str(panel_tag.find("div", class_="panel-body our-people"))
 
             # Locations panel
             if panel_header_text == "Locations":
