@@ -113,7 +113,7 @@ def employers_jobs_count():
 # job ############################################################
 @job_bp.cli.command('feed2json')
 # @click.argument('max')
-def job_tag_json(max=None):
+def job_feed2json(max=None):
     if max:
         try:
             max = int(max)
@@ -146,7 +146,7 @@ def load_jobs_json():
 
 
 @job_bp.cli.command('json2db')
-def job_json_dict(max=None):
+def job_json2dict(max=None):
 
     job_dicts = load_jobs_json()
 
@@ -175,10 +175,20 @@ def job_show(jid):
     pprint(Job.query.filter(Job.id == jid).first().__dict__)
 
 
+@job_bp.cli.command('parse')
+@click.argument('code')
+def parse_job(code):
+    job_p = itviec.parsers.JobParser(code)
+    job_p.fetch_and_parse()
+    # job_p.digest()
+
+    pprint(job_p.__dict__)
+
+
 # employer ############################################################
 @emp_bp.cli.command('parse')
 @click.argument('code')
-def test_emp(code):
+def parse_employer(code):
     employer_p = itviec.parsers.EmployerParser(code)
     employer_p.fetch_and_parse()
     employer_p.digest()
@@ -186,3 +196,101 @@ def test_emp(code):
 
     pprint(employer_p.__dict__)
     # pprint(employer_p.reviews)
+
+
+@emp_bp.cli.command('feed2json')
+@click.argument('max_count', default=10_000)
+def employer_feed2json(max_count=None):
+    import time
+    import random
+
+    if max_count is None:
+        max_count = 100_000
+    max_count = int(max_count)
+
+    feed = itviec.parsers.EmployerFeed()
+    print("Employers: {}".format(len(feed)))
+    loop_count = 0
+
+    employer_l = []
+    for (emp_code, _) in feed:
+        employer_l.append(emp_code)
+    employer_l.sort()
+
+    exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
+    start_with = ""
+    skip = True
+
+    for emp_code in employer_l:
+        loop_count = loop_count + 1
+        if start_with == emp_code:
+            skip = False
+        if skip:
+            continue
+        if emp_code in exceptions:
+            continue
+
+        print("#{} {}".format(loop_count, emp_code))
+
+        p = itviec.parsers.EmployerParser(emp_code)
+        p.fetch_and_parse()
+        # pprint(p.emp)
+        # print(p.get_json())
+        p.save_json()
+
+        if loop_count == max_count:
+            break
+
+        # time.sleep(0.9)
+        time.sleep(random.randrange(4, 12, 1) / 10)
+
+
+@emp_bp.cli.command('prio2json')
+@click.argument('max_count', default=None)
+def employer_feed2json(max_count):
+    import time
+    import random
+
+    if max_count is None:
+        max_count = 100_000
+    max_count = int(max_count)
+
+    # To be modified/populated as necessary ###############
+    prio_list = []
+    start_with = ""
+    ####################################
+
+    print("Employers: {}".format(len(prio_list)))
+    # exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
+    exceptions = ()
+    loop_count = 0
+    skip = True
+
+    for emp_code in prio_list:
+        loop_count = loop_count + 1
+        if start_with <= emp_code:
+            skip = False
+        if skip:
+            continue
+        if emp_code in exceptions:
+            continue
+
+        print("#{} {}".format(loop_count, emp_code))
+
+        p = itviec.parsers.EmployerParser(emp_code)
+        p.fetch_and_parse()
+        p.save_json()
+
+        if loop_count == max_count:
+            break
+
+        time.sleep(0.8)
+
+
+@emp_bp.cli.command('with-job')
+def employer_with_job():
+    query = db.session.query(Job.employer_code).group_by(Job.employer_code).all()
+    emp_w_job = []
+    for row in query:
+        emp_w_job.append(row[0])
+    print(emp_w_job)

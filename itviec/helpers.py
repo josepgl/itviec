@@ -26,15 +26,16 @@ def msg(string):
 
 
 def fetch_url(url):
-    # Fetch page
     # print('Fetching url {}'.format(url)) # DEBUG
-
+    error_msg = "Error {0} fetching url: {1}"
     response = requests.get(url, headers=config.req_http_headers)
 
     # Check response code
     if response.status_code != 200:
-        raise StopIteration(
-            "Error {0} fetching url: {1}".format(response.status_code, url)
-        )
+        raise StopIteration(error_msg.format(response.status_code, url))
+
+    # Check response
+    # if response.text.find("Oops!") != -1:
+    #     raise ConnectionError(error_msg.format(404, url))
 
     return response
