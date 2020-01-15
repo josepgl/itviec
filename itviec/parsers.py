@@ -41,7 +41,7 @@ class EmployerParser:
         print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
-        if response.text.find('class="search_companies"') is -1:
+        if response.text.find('employers_show') is -1:
             raise KeyError("Employer '{}' not found at {}".format(self.code, url))
 
         self.emp = self.parse_employer_page(response.text)
@@ -634,7 +634,7 @@ class JobParser:
         print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
-        if response.text.find('class="search_jobs"') is -1:
+        if response.text.find('jobs_show') is -1:
             raise KeyError("Job '{}' not found at {}".format(self.code, url))
 
         self.job = self.parse_job_page(response.text)
