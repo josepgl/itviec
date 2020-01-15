@@ -34,8 +34,4 @@ def fetch_url(url):
     if response.status_code != 200:
         raise StopIteration(error_msg.format(response.status_code, url))
 
-    # Check response
-    # if response.text.find("Oops!") != -1:
-    #     raise ConnectionError(error_msg.format(404, url))
-
     return response
