@@ -37,8 +37,13 @@ class EmployerParser:
 
     def fetch_and_parse(self):
         url = self.get_url()
+
         print("Fetching url: {}".format(url))
         response = fetch_url(url)
+
+        if response.text.find('class="search_companies"') is -1:
+            raise KeyError("Employer '{}' not found at {}".format(self.code, url))
+
         self.emp = self.parse_employer_page(response.text)
 
     def digest(self):
@@ -55,8 +60,9 @@ class EmployerParser:
         for review_tag in feed.reviews():
             try:
                 self.reviews.append(ReviewParser(review_tag))
-            except:
+            except KeyError:
                 print(review_tag)
+                raise
 
     def parse_employer_page(self, html):
         '''Div: company-page
@@ -106,10 +112,11 @@ class EmployerParser:
 
         # Navigation
         nav = left_column.find("ul", class_="navigation")
-        reviews_count = nav.select("li.review-tab")[0].find("a").string
-        emp["review_count"] = int(reviews_count[:reviews_count.find("Review")] or 0)
         emp["website"] = nav.find("a", class_="ion-android-open")["href"]
 
+        # Review stats
+        reviews_count = nav.select("li.review-tab")[0].find("a").string
+        emp["review_count"] = int(reviews_count[:reviews_count.find("Review")] or 0)
         emp["review_rate"] = None
         emp["review_recommend"] = None
 
@@ -622,8 +629,14 @@ class JobParser:
         return "/".join((app.config["JOBS_URL"], self.code))
 
     def fetch_and_parse(self):
-        print("Fetching url: {}".format(self.get_url()))
-        response = fetch_url(self.get_url())
+        url = self.get_url()
+
+        print("Fetching url: {}".format(url))
+        response = fetch_url(url)
+
+        if response.text.find('class="search_jobs"') is -1:
+            raise KeyError("Job '{}' not found at {}".format(self.code, url))
+
         self.job = self.parse_job_page(response.text)
 
     def parse_job_page(self, html):
