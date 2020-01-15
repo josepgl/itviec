@@ -2,6 +2,8 @@ import requests
 
 import config
 
+VIETNAMESE_CHARACTERS = "ăắằẳẵặâấầẩẫậĐđêếềểễệôốồổỗộơớờởỡợưứừửữự"
+
 
 def first_line(string):
     return str(string).splitlines()[0]
