@@ -37,7 +37,7 @@ class Database():
             db.session.remove()
 
         if uri is 'sqlite://':
-            self.init_app()
+            self.init_db()
 
     def init_db(self):
         print("Init database")
