@@ -13,9 +13,8 @@ class Database():
             self.set_engine(uri)
 
     def set_uri(self, uri):
+        print("Using database engine: {}".format(uri))
         self.engine = create_engine(uri)
-        # print("Engine: " + str(self.engine))
-        print(self.engine)
         session = self.get_session()
         self.base.query = session.query_property()
 
