@@ -9,11 +9,8 @@ class EmployerFeed:
 
     def __init__(self, **kwargs):
         self.url = app.config["EMPLOYERS_JSON_URL"]
-        # self.json = fetch_url(self.url).json()
         self.response = fetch_url(self.url)
         self.json = self.response.json()
-        # print(self.json)
-        # self.json = json.load(json_string)
 
     def __len__(self):
         return len(self.json)
@@ -266,7 +263,6 @@ class EmployerParser:
         # Paragraph
         paragraph_tag = panel_body_tag.find("div", class_="paragraph")
         why["paragraph"] = str(paragraph_tag)
-        # why["paragraph"] = "".join(str(paragraph_tag.contents))
 
         return why
 
@@ -365,25 +361,18 @@ class ReviewParser:
 
         self.review = {}
 
-        # print(review_tag.previous_sibling.__class__.__name__)
-        # print(review_tag.previous_sibling.previous_sibling.__class__.__name__)
-
-        is_full_review = False
         previous_tag = review_tag.previous_sibling.previous_sibling
         if previous_tag.__class__.__name__ is "Comment":
-            is_full_review = True
             self.review["last_update"] = previous_tag.string.split('"')[1]
 
-        # print("Is full review: {}".format(is_full_review))
         # short summary tag
         short_summary_tag = review_tag.find("div", class_="short-summary row")
 
-        # r.title: h3 short-title
+        # title: h3 short-title
         title = short_summary_tag.find("h3", class_="short-title").string.strip()
         self.review["title"] = title
 
         # div: stars-and-recommend
-        # r.stars
         stars_tag = short_summary_tag.find("div", class_="stars")
 
         # general rating
@@ -393,19 +382,18 @@ class ReviewParser:
 
         # specific rating
         stars_ul = stars_tag.find("ul", class_="hidden-sm hidden-xs detail-rating-tooltip")
-        # print(stars_ul)
         categories = ["salary", "training", "management", "culture", "workspace"]
         for li_tag in stars_ul.find_all("li"):
             for span in li_tag.find_all("span", class_="round-rate-rating-bar"):
                 unchecked = len(span.find_all("span", class_="fa fa-square unchecked"))
                 self.review["stars_" + categories.pop(0)] = 5 - unchecked
 
-        # r.recommend
+        # recommend
         recomend_tag = short_summary_tag.find("div", class_="recommend")
         recomend_span = recomend_tag.find("span")
         self.review["recommend"] = recomend_span["class"][0] == "yes"
 
-        # r.date
+        # date
         date = short_summary_tag.find("div", class_="date").string.strip()
         self.review["date"] = date
 
@@ -415,7 +403,6 @@ class ReviewParser:
         is_blurred = False
         if "blur" in details_review_tag["class"]:
             is_blurred = True
-        # print("Is blurred: {}".format(is_blurred))
 
         if not is_blurred:
             # Liked
@@ -441,17 +428,8 @@ class ReviewParser:
     def employer_reviews_parser(html):
         soup = BeautifulSoup(html, "html.parser")
 
-        # cr_div = bs.find('div',class_="company-review")
-        # print(first_line(cr_div))
-        # msg('')
-        # for t in cr_div.children:
-        # msg(first_line(t))
-        # msg('')
-        # cc_div = bs.find('div',class_="row company-container")
-
         # Left column
         left_column = soup.find("div", class_="col-md-8 col-left")
-        # print(first_line(col_left))
 
         # ratings and reviews
         r_n_r = {}
@@ -459,37 +437,28 @@ class ReviewParser:
         # number of reviews
         nav = left_column.find("ul", class_="navigation")
         count_tag = nav.find_all("a", limit=2)[1]
-        count_tag
-        # msg("count_tag: " + str(count_tag))
+        pass
         reviews_count = count_tag.string.split(" ")[0]
         try:
             r_n_r["reviews_count"] = int(reviews_count)
-            # msg("reviews: " + str(r_n_r["reviews_count"]))
 
             # stars: panel panel-default
             panel_div = left_column.find("div", class_="panel panel-default")
             rate_div = panel_div.find("p", class_="start-point")
             if rate_div:
                 r_n_r['ratings']['overall'] = float(rate_div.string.split(" ")[0])
-                # msg("Rating overall: " + str(r_n_r['ratings']['overall']))
 
                 # recommended
                 r_n_r['ratings']['recommended'] = int(panel_div.find("td")["data-rate"])
-                # msg("Recommended: " + str(r_n_r['ratings']['recommended']))
 
                 # ratings: table: ratings-specific
                 ratings_tbl = left_column.find("table", class_="ratings-specific")
 
                 for row in ratings_tbl.find_all("tr"):
-                    # msg(first_line(row))
                     row.contents
-                    # msg("row.contents: " + str(row.contents) )
 
                     td_name = row.contents[1].span.string
                     td_rate = row.contents[5].string.split()[0]
-
-                    # msg("td_name: " + str(td_name) )
-                    # msg("td_rate: " + str(td_rate) )
 
                     r_n_r['ratings'][td_name] = td_rate
             else:
@@ -498,7 +467,6 @@ class ReviewParser:
         except:
             pass
 
-        # print(r_n_r)
         return r_n_r
 
     def __repr__(self):
@@ -716,9 +684,7 @@ class JobPageIterator:
 
         # Get next page url if exists
         a = soup.find("a", href=True, rel="next")
-        # print( type(a).__name__ )
         next_url = a["href"] if type(a).__name__ is "Tag" else ""
-        # print("Next URL: " + next_url)
 
         # Get previous page url if exists
         for a in soup.find_all("a", href=True, rel="prev"):
