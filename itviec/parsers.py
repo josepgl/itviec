@@ -643,6 +643,7 @@ class JobParser:
         '''div: content
             - Comment: last updated
             - div: main-entity
+              - div: side_bar
               - div: job-detail
                 - div: header
                 - div: job_reason_to_join_us
@@ -651,7 +652,7 @@ class JobParser:
                 - div: love_working_here
         '''
         job = {
-            "id": None,
+            "id": self.code[self.code.rfind("-") + 1:],
             "code": self.code,
             # "reasons": None,
             # "description": None,
@@ -661,10 +662,14 @@ class JobParser:
 
         soup = BeautifulSoup(html, "html.parser")
         div_content = soup.find("div", class_="content")
-        job_detail = div_content.find("div", class_="job-detail")
 
+        side_bar = soup.find("div", class_="side_bar")
+        _ = side_bar.find("a")["href"]
+        job["employer_code"] = _[_.rfind("/") + 1:]
+
+        job_detail = div_content.find("div", class_="job-detail")
         last_upd = div_content.contents[1].string
-        job["last_updated"] = last_upd[last_upd.find('"') + 1:-1]
+        job["last_update"] = last_upd[last_upd.find('"') + 1:-1]
 
         # Header
         # - job_info
@@ -702,6 +707,9 @@ class JobParser:
                 if value_len > 100:
                     temp[key] = "<{} len:{}>".format(key, value_len)
         return temp
+
+    def get_dict(self):
+        return self.job
 
 
 class JobTagParser:
