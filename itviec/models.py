@@ -83,17 +83,22 @@ class Job(db.base):
     __tablename__ = 'job'
 
     id = Column(Integer, primary_key=True, nullable=False)
+    code = Column(String(128), nullable=False)
     last_update = Column(String(128), nullable=False)
     title = Column(String(128), nullable=False)
-    url = Column(String(128), nullable=False)
+    # url = Column(String(128), nullable=False)
     salary = Column(String(128), nullable=False)
-    description = Column(String(128), nullable=False)
+    description = Column(Text, nullable=False)
+    skills_experience = Column(Text, nullable=False)
+    reasons = Column(Text, nullable=False)
+    why = Column(Text, nullable=False)
 
-    address = relationship("Address",
-                           secondary="job_address",
-                           backref="job",
-                           # backref=backref("jobs", lazy='dynamic'),
-                           )
+    address = Column(String(128), nullable=False)
+    # address = relationship("Address",
+    #                        secondary="job_address",
+    #                        backref="job",
+    #                        # backref=backref("jobs", lazy='dynamic'),
+    #                        )
 
     # tags = relationship("Tag",
     #                     secondary="job_tag",
@@ -130,33 +135,28 @@ class Job(db.base):
         #     return has_job
 
         # Child objects
-        addresses = []
-        for job_address in job_dict["address"]:
-            # print("job_address: " + job_address)
-            has_addr = db.session.query(Address).filter_by(name=job_address).first()
-            if has_addr is not None:
-                addresses.append(has_addr)
-            else:
-                addresses.append(Address(name=job_address))
-                db.session.add(addresses[-1])
-            # pprint(addresses[-1].__dict__)
+        # addresses = []
+        # for job_address in job_dict["address"]:
+        #     has_addr = db.session.query(Address).filter_by(name=job_address).first()
+        #     if has_addr is not None:
+        #         addresses.append(has_addr)
+        #     else:
+        #         addresses.append(Address(name=job_address))
+        #         db.session.add(addresses[-1])
 
         tags = []
         for job_tag in job_dict["tags"]:
-            # print("job_tag: " + job_tag)
             has_tag = db.session.query(Tag).filter_by(name=job_tag).first()
             if has_tag is not None:
                 tags.append(has_tag)
             else:
                 tags.append(Tag(name=job_tag))
                 db.session.add(tags[-1])
-            # pprint(tags[-1].__dict__)
 
         db.session.commit()
-        job_dict["address"] = []
         job_dict["tags"] = []
         job = Job(**job_dict)
-        job.address.extend(addresses)
+
         for tag in tags:
             job.link_tag(tag)
 
@@ -197,16 +197,6 @@ class Tag(db.base):
 
     id = Column(Integer(), primary_key=True)
     name = Column(String(128), unique=True, nullable=False)
-
-    # jobs = relationship("Job",
-    #                     secondary="job_tag",
-    #                     # backref="job",
-    #                     # backref=backref("jobs", lazy='dynamic'),
-    #                     back_populates="tags",
-    #                     )
-    # jobs = relationship("JobTag")
-    # jobs = relationship("JobTag", secondary="job_tag")
-    # employers = relationship("Employer", secondary="employer_tag")
 
     def __repr__(self):
         return '<Tag {}>'.format(self.name)
