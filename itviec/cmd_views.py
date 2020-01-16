@@ -44,14 +44,9 @@ def update_db():
 
 
 @cmd_bp.cli.command('test-emp-feed')
-# @click.argument('code')
 def test_emp_feed():
     feed = itviec.parsers.EmployerFeed()
-    # print("feed: " + str(feed))
     print("feed.len: " + str(len(feed)))
-    # print("feed class: " + str(feed.__class__))
-    # print("feed response.text: " + feed.response.text)
-    # print("feed.json class: " + str(feed.json.__class__))
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
         print("Employer code: {}".format(emp_code))
@@ -68,7 +63,6 @@ def test_jobs_feed():
     for job_tag in feed.job_tags():
         job = Job.from_tag(job_tag)
 
-        # print(str(job.__class__))
         print(job.last_update, job, "@", job.employer_code)
         print(job.address)
         print(job.tags)
@@ -112,7 +106,6 @@ def employers_jobs_count():
 
 # job ############################################################
 @job_bp.cli.command('feed2json')
-# @click.argument('max')
 def job_feed2json(max=None):
     if max:
         try:
@@ -150,20 +143,10 @@ def job_json2dict(max=None):
 
     job_dicts = load_jobs_json()
 
-    # tags = {}
-    # addresses = {}
     jobs = []
     for jd in job_dicts:
-        # for tag in jd["tags"]:
-        #     tags[tag] = ""
-        # for add in jd["address"]:
-        #     addresses[add] = ""
-        # for key in jd:
-        #     pprint(jd[key])
         jobs.append(Job.from_dict(jd))
 
-    # print("Tags:", str(tags.keys()))
-    # print("Addresses:", str(addresses.keys()))
     db.session.commit()
 
     return None
@@ -183,7 +166,6 @@ def parse_job(code):
     job_d = job_p.digest()
 
     pprint(job_d)
-    # pprint(job_p.job)
 
 
 @job_bp.cli.command('instance')
@@ -194,7 +176,6 @@ def instantiate_job(code):
     job = Job.from_dict(job_p.get_dict())
 
     pprint(job)
-    # pprint(job_p.job)
 
 
 # employer ############################################################
