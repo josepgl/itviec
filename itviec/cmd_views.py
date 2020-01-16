@@ -150,8 +150,8 @@ def job_json2dict(max=None):
 
     job_dicts = load_jobs_json()
 
-    tags = {}
-    addresses = {}
+    # tags = {}
+    # addresses = {}
     jobs = []
     for jd in job_dicts:
         # for tag in jd["tags"]:
@@ -162,8 +162,8 @@ def job_json2dict(max=None):
         #     pprint(jd[key])
         jobs.append(Job.from_dict(jd))
 
-    print("Tags:", str(tags.keys()))
-    print("Addresses:", str(addresses.keys()))
+    # print("Tags:", str(tags.keys()))
+    # print("Addresses:", str(addresses.keys()))
     db.session.commit()
 
     return None
@@ -183,6 +183,17 @@ def parse_job(code):
     job_d = job_p.digest()
 
     pprint(job_d)
+    # pprint(job_p.job)
+
+
+@job_bp.cli.command('instance')
+@click.argument('code')
+def instantiate_job(code):
+    job_p = itviec.parsers.JobParser(code)
+    job_p.fetch_and_parse()
+    job = Job.from_dict(job_p.get_dict())
+
+    pprint(job)
     # pprint(job_p.job)
 
 
@@ -248,7 +259,7 @@ def employer_feed2json(max_count=None):
 
 @emp_bp.cli.command('prio2json')
 @click.argument('max_count', default=None)
-def employer_feed2json(max_count):
+def employer_prio2json(max_count):
     import time
     import random
 
