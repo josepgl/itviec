@@ -30,7 +30,13 @@ def msg(string):
 def fetch_url(url):
     # print('Fetching url {}'.format(url)) # DEBUG
     error_msg = "Error {0} fetching url: {1}"
-    response = requests.get(url, headers=config.req_http_headers)
+
+    try:
+        response = requests.get(url, headers=config.req_http_headers)
+    except ConnectionError as e:
+        print("Can't connect to server: {}".format(e))
+    except HTTPError as e:
+        print(e)
 
     # Check response code
     if response.status_code != 200:
