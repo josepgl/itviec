@@ -185,10 +185,12 @@ def parse_employer(code):
     employer_p = itviec.parsers.EmployerParser(code)
     employer_p.fetch_and_parse()
     employer_p.digest()
-    # employer_p.fetch_and_parse_reviews()
+    employer_p.fetch_and_parse_reviews()
 
-    pprint(employer_p.__dict__)
-    # pprint(employer_p.reviews)
+    # pprint(employer_p.__dict__)
+    pprint(employer_p.reviews)
+    # for rev in employer_p.reviews:
+    #     pprint(rev.review)
 
 
 @emp_bp.cli.command('feed2json')
@@ -242,7 +244,6 @@ def employer_feed2json(max_count=None):
 @click.argument('max_count', default=None)
 def employer_prio2json(max_count):
     import time
-    import random
 
     if max_count is None:
         max_count = 100_000
@@ -254,8 +255,7 @@ def employer_prio2json(max_count):
     ####################################
 
     print("Employers: {}".format(len(prio_list)))
-    # exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
-    exceptions = ()
+    exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
     loop_count = 0
     skip = True
 
