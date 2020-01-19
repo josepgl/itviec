@@ -536,7 +536,7 @@ class JobParser:
         tag_list = header.find("div", class_="tag-list")
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
-        job["address"] = "".join(header.find("div", class_="address__full-address").strings).strip()
+        job["full_address"] = "".join(header.find("div", class_="address__full-address").strings).strip()
 
         reasons = job_detail.find("div", class_="job_reason_to_join_us")
         job["reasons"] = str(reasons)

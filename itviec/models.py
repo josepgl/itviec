@@ -6,10 +6,17 @@ import config
 from itviec.db import db
 from itviec.parsers import JobTagParser, EmployerParser
 
+from pprint import pprint
+
 job_address = Table('job_address', db.base.metadata,
                     Column('job_id', Integer, ForeignKey('job.id')),
                     Column('address_id', Integer, ForeignKey('address.id'))
                     )
+
+employer_address = Table('employer_address', db.base.metadata,
+                         Column('employer_id', Integer, ForeignKey('employer.id')),
+                         Column('address_id', Integer, ForeignKey('address.id'))
+                         )
 
 
 class Employer(db.base):
@@ -31,6 +38,11 @@ class Employer(db.base):
     overview = Column(Text(), nullable=False, unique=True)  # Large text
     why = Column(Text(), nullable=False, unique=True)  # Large text
 
+    addresses = relationship("Address",
+                             secondary="employer_address",
+                             backref="employers",
+                             # backref=backref("jobs", lazy='dynamic'),
+                             )
     # jobs = relationship('Job', lazy=True)
     # tags = Column(String(128), ForeignKey('tag.name'), nullable=False)
     # reviews = relationship('Review', backref='employer', lazy=True)
@@ -86,19 +98,19 @@ class Job(db.base):
     code = Column(String(128), nullable=False)
     last_update = Column(String(128), nullable=False)
     title = Column(String(128), nullable=False)
-    # url = Column(String(128), nullable=False)
     salary = Column(String(128), nullable=False)
     description = Column(Text, nullable=False)
     skills_experience = Column(Text, nullable=False)
     reasons = Column(Text, nullable=False)
     why = Column(Text, nullable=False)
 
-    address = Column(String(128), nullable=False)
-    # address = relationship("Address",
-    #                        secondary="job_address",
-    #                        backref="job",
-    #                        # backref=backref("jobs", lazy='dynamic'),
-    #                        )
+    # address = Column(String(128), nullable=False)
+    full_address = Column(String(128), ForeignKey('address.name'))
+    address = relationship("Address",
+                           # secondary="job_address",
+                           backref="jobs",
+                           # backref=backref("jobs", lazy='dynamic'),
+                           )
 
     # tags = relationship("Tag",
     #                     secondary="job_tag",
@@ -130,19 +142,16 @@ class Job(db.base):
 
     @classmethod
     def from_dict(self, job_dict):
-        # has_job = db.session.query(Job).filter_by(id=job_dict["id"]).first()
-        # if has_job:
-        #     return has_job
+
+        pprint(job_dict)
 
         # Child objects
-        # addresses = []
-        # for job_address in job_dict["address"]:
-        #     has_addr = db.session.query(Address).filter_by(name=job_address).first()
-        #     if has_addr is not None:
-        #         addresses.append(has_addr)
-        #     else:
-        #         addresses.append(Address(name=job_address))
-        #         db.session.add(addresses[-1])
+        has_addr = db.session.query(Address).filter_by(name=job_dict["full_address"]).first()
+        if has_addr is not None:
+            job_dict["full_address"] = has_addr
+        else:
+            job_dict["full_address"] = Address(name=job_dict["full_address"])
+            db.session.add(job_dict["full_address"])
 
         tags = []
         for job_tag in job_dict["tags"]:
@@ -153,12 +162,10 @@ class Job(db.base):
                 tags.append(Tag(name=job_tag))
                 db.session.add(tags[-1])
 
-        db.session.commit()
+        # db.session.commit()
         job_dict["tags"] = []
         job = Job(**job_dict)
-
-        for tag in tags:
-            job.link_tag(tag)
+        job.link_tags(tags)
 
         return job
 
@@ -172,8 +179,13 @@ class Job(db.base):
         job_tag_link = JobTag(job_id=self.id, tag_id=tag.id)
         print("Created: {}".format(job_tag_link))
         db.session.add(job_tag_link)
+        # db.session.commit()
 
         return job_tag_link
+
+    def link_tags(self, tags):
+        for tag in tags:
+            self.link_tag(tag)
 
 
 class JobTag(db.base):
