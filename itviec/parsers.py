@@ -5,6 +5,16 @@ from bs4 import BeautifulSoup, Comment
 from itviec.helpers import fetch_url
 
 
+def is_last_updated(tag):
+    return tag.__class__.__name__ is 'Comment' \
+        and tag.string.startswith(" Last updated:")
+
+
+def get_last_updated(tag):
+    _ = tag.string
+    return _[_.find('"') + 1:-1]
+
+
 class EmployerFeed:
 
     def __init__(self, **kwargs):
@@ -90,6 +100,7 @@ class EmployerParser:
         try:
             soup = BeautifulSoup(html, "html.parser")
             company_tag = soup.find("div", class_="company-page")
+            header_tag = company_tag.select("div.headers.hidden-xs")[0]
         except AttributeError as e:
             print("Could not find 'company-page': {}".format(e))
             return None
@@ -97,53 +108,27 @@ class EmployerParser:
         # ############################# #
         # Company general info / Header #
         # ############################# #
-        header_tag = company_tag.select("div.headers.hidden-xs")[0]
         emp.update(self._parse_header(header_tag))
 
         # ###################### #
         # Container Left Columnn #
         # ###################### #
-
         left_column = company_tag.find(class_="col-md-8 col-left")
-        for child in left_column.children:
-            if child.__class__.__name__ is 'Comment':
-                if child.string.startswith(" Last updated:"):
-                    last_upd = child.string
-                    emp["last_updated"] = last_upd[last_upd.find('"') + 1:-1]
-                    break
-
-        # ############## #
-        # Overview Panel #
-        # ############## #
+        emp["last_updated"] = self._parse_last_update(company_tag)
 
         # Navigation
         nav = left_column.find("ul", class_="navigation")
         emp["website"] = nav.find("a", class_="ion-android-open")["href"]
 
         # Review stats
-        reviews_count = nav.select("li.review-tab")[0].find("a").string
-        emp["review_count"] = int(reviews_count[:reviews_count.find("Review")] or 0)
-        emp["review_rate"] = None
-        emp["review_recommend"] = None
+        emp.update(self._parse_review_stats(company_tag))
 
-        try:
-            ratings_panel = company_tag.select("div.company-ratings")[0]
-
-            ratings_tag = ratings_panel.find("span", "company-ratings__star-point")
-            emp["review_ratings"] = float(ratings_tag.string)
-
-            recommend_tag = ratings_panel.find("td", "chart")
-            emp["review_recommend"] = int(recommend_tag["data-rate"])
-        except (AttributeError, IndexError):
-            pass
-
-        # Overview panel
+        # ############## #
+        # Overview Panel #
+        # ############## #
         overview_div = left_column.find("div", class_="panel panel-default")
         emp["overview"] = str(overview_div)
-        skills_tag = overview_div.find("ul", class_="employer-skills")
-        emp["tags"] = []
-        for skill_link in skills_tag.find_all("a"):
-            emp["tags"].append(skill_link.string)
+        emp["tags"] = self._parse_employer_tags(overview_div)
 
         for panel_tag in left_column.select("div.panel-default"):
             header_tag = panel_tag.select("div.panel-heading")[0]
@@ -151,9 +136,7 @@ class EmployerParser:
 
             # Jobs panel
             if panel_header_text == "Jobs":
-                jobtag_iterator = JobTagIterator(panel_tag)
-                for job_tag in jobtag_iterator:
-                    emp["jobs"].append(JobTagParser(job_tag).get_dict())
+                emp["jobs"] = self._parse_jobs_panel(panel_tag)
 
             # Why panel
             if panel_header_text == "Why You'll Love Working Here":
@@ -165,15 +148,15 @@ class EmployerParser:
 
             # Locations panel
             if panel_header_text.startswith("Location"):
-                location_column = panel_tag.find("div", class_="col-md-3 hidden-xs")
-
-                for address_tag in location_column.select("div.full-address"):
-                    addr_parts = [addr_part for addr_part in address_tag.strings]
-                    full_address = ", ".join(addr_parts).strip()
-
-                    emp["locations"].append(full_address)
+                emp["locations"] = self._parse_location_panel(panel_tag)
 
         return emp
+
+    def _parse_last_update(self, company_tag):
+        left_column = company_tag.find(class_="col-md-8 col-left")
+        for child in left_column.children:
+            if is_last_updated(child):
+                return get_last_updated(child)
 
     def _parse_header(self, header_tag):
         emp = {}
@@ -233,6 +216,44 @@ class EmployerParser:
 
         return emp
 
+    def _parse_review_stats(self, company_tag):
+        emp = {}
+        left_column = company_tag.find(class_="col-md-8 col-left")
+        nav = left_column.find("ul", class_="navigation")
+
+        # Review stats
+        reviews_count = nav.select("li.review-tab")[0].find("a").string
+        emp["review_count"] = int(reviews_count[:reviews_count.find("Review")] or 0)
+        emp["review_ratings"] = None
+        emp["review_recommend"] = None
+
+        try:
+            ratings_panel = company_tag.select("div.company-ratings")[0]
+
+            ratings_tag = ratings_panel.find("span", "company-ratings__star-point")
+            emp["review_ratings"] = float(ratings_tag.string)
+
+            recommend_tag = ratings_panel.find("td", "chart")
+            emp["review_recommend"] = int(recommend_tag["data-rate"])
+        except (AttributeError, IndexError):
+            print("Ratings panel is missing")
+
+        return emp
+
+    def _parse_employer_tags(self, panel_tag):
+        tags = []
+        skills_tag = panel_tag.find("ul", class_="employer-skills")
+        for skill_link in skills_tag.find_all("a"):
+            tags.append(skill_link.string)
+        return tags
+
+    def _parse_jobs_panel(self, panel_tag):
+        jobs = []
+        for job_tag in JobTagIterator(panel_tag):
+            jobs.append(JobTagParser(job_tag).get_dict())
+
+        return jobs
+
     def _parse_why_panel(self, panel_tag):
 
         why = {"reasons": [], "environment": [], "paragraph": []}
@@ -274,6 +295,17 @@ class EmployerParser:
         why["paragraph"] = str(paragraph_tag)
 
         return why
+
+    def _parse_location_panel(self, panel_tag):
+        locations = []
+        location_column = panel_tag.find("div", class_="col-md-3 hidden-xs")
+
+        for address_tag in location_column.select("div.full-address"):
+            addr_parts = [addr_part for addr_part in address_tag.strings]
+            full_address = ", ".join(addr_parts).strip()
+            locations.append(full_address)
+
+        return locations
 
     def get_dict(self):
         return self.emp
