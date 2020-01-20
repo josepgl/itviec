@@ -79,11 +79,20 @@ class EmployerParser:
                     - Div::panel panel-default: Location
                 - Div::col-md-4 col-right: Reviews info
         '''
-        bs = BeautifulSoup(html, "html.parser")
+        emp = {
+            'code': self.code,
+            "jobs": [],
+            "why": {},
+            "locations": [],
+            "our_people": None
+        }
 
-        emp = {'code': self.code, "jobs": [], "why": {}, "locations": [], "our_people": None}
-
-        company_tag = bs.div.find(class_="company-page")
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+            company_tag = soup.find("div", class_="company-page")
+        except AttributeError as e:
+            print("Could not find 'company-page': {}".format(e))
+            return None
 
         # ############################# #
         # Company general info / Header #
@@ -437,7 +446,6 @@ class ReviewParser:
         # number of reviews
         nav = left_column.find("ul", class_="navigation")
         count_tag = nav.find_all("a", limit=2)[1]
-        pass
         reviews_count = count_tag.string.split(" ")[0]
         try:
             r_n_r["reviews_count"] = int(reviews_count)
