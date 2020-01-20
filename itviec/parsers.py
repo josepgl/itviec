@@ -434,7 +434,7 @@ class ReviewParser:
 
             self.review["hated"] = hated_paragraph
 
-    def employer_reviews_parser(html):
+    def employer_reviews_parser(self, html):
         soup = BeautifulSoup(html, "html.parser")
 
         # Left column
@@ -472,7 +472,8 @@ class ReviewParser:
             else:
                 r_n_r['ratings']['overall'] = None
                 r_n_r['ratings']['recommended'] = None
-        except:
+        except TypeError as e:
+            print("No reviews were found: {}".format(e))
             pass
 
         return r_n_r

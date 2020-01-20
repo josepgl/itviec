@@ -110,8 +110,9 @@ def job_feed2json(max=None):
     if max:
         try:
             max = int(max)
-        except:
-            pass
+        except ValueError:
+            print("'Max' parameter is not a valid integer")
+            raise
 
     feed = itviec.parsers.JobsFeed()
 
