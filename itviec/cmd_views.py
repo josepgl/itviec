@@ -185,13 +185,9 @@ def instantiate_job(code):
 def parse_employer(code):
     employer_p = itviec.parsers.EmployerParser(code)
     employer_p.fetch_and_parse()
-    employer_p.digest()
     employer_p.fetch_and_parse_reviews()
 
-    # pprint(employer_p.__dict__)
-    pprint(employer_p.reviews)
-    # for rev in employer_p.reviews:
-    #     pprint(rev.review)
+    pprint(employer_p.__dict__)
 
 
 @emp_bp.cli.command('feed2json')
