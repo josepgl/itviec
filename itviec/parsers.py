@@ -506,7 +506,6 @@ class ReviewParser:
                 r_n_r['ratings']['recommended'] = None
         except TypeError as e:
             print("No reviews were found: {}".format(e))
-            pass
 
         return r_n_r
 
