@@ -194,7 +194,6 @@ def parse_employer(code):
 @click.argument('max_count', default=10_000)
 def employer_feed2json(max_count=None):
     import time
-    import random
 
     if max_count is None:
         max_count = 100_000
@@ -226,15 +225,12 @@ def employer_feed2json(max_count=None):
 
         p = itviec.parsers.EmployerParser(emp_code)
         p.fetch_and_parse()
-        # pprint(p.emp)
-        # print(p.get_json())
         p.save_json()
 
         if loop_count == max_count:
             break
 
-        # time.sleep(0.9)
-        time.sleep(random.randrange(4, 12, 1) / 10)
+        time.sleep(1)
 
 
 @emp_bp.cli.command('prio2json')
@@ -274,7 +270,7 @@ def employer_prio2json(max_count):
         if loop_count == max_count:
             break
 
-        time.sleep(0.8)
+        time.sleep(1)
 
 
 @emp_bp.cli.command('with-job')
