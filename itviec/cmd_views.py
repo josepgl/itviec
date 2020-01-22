@@ -43,12 +43,12 @@ def stats():
 @cmd_bp.cli.command('update')
 def update():
     '''Download employer and job summary list'''
-    r = itviec.helpers.fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
-    employers_count = len(r.json())
-    print("Found {} employers.".format(employers_count))
-    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(r.text)
+    update_employers()
+    update_jobs()
 
+
+def update_jobs():
+    '''Download job summary list'''
     jobs = []
     feed = itviec.parsers.JobsFeed()
     for page in feed:
@@ -60,6 +60,15 @@ def update():
     print("Found {} jobs.".format(len(jobs)))
     with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
         jobs_file.write(json.dumps(jobs, indent=2, sort_keys=True))
+
+
+def update_employers():
+    '''Download employer list'''
+    r = itviec.helpers.fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    employers_count = len(r.json())
+    print("Found {} employers.".format(employers_count))
+    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
+        emps_file.write(r.text)
 
 
 @cmd_bp.cli.command('test-emp-feed')
