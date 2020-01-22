@@ -1,5 +1,4 @@
 import requests
-from requests.exceptions import HTTPError, ConnectionError
 
 import config
 
@@ -34,10 +33,10 @@ def fetch_url(url, headers=config.req_http_headers):
 
     try:
         response = requests.get(url, headers=headers)
-    except ConnectionError as e:
-        print("Can't connect to server: {}".format(e))
-    except HTTPError as e:
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
         print(e)
+        exit(1)
 
     # Check response code
     if response.status_code != 200:
