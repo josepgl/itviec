@@ -5,6 +5,7 @@ from flask import Blueprint
 from flask import current_app as app
 
 import itviec.parsers
+import itviec.helpers
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag, Address
 
@@ -38,9 +39,27 @@ def stats():
     print("Employers: {}".format(employers))
 
 
-@cmd_bp.cli.command('update-db')
-def update_db():
-    pass
+# Commands ###########################################
+@cmd_bp.cli.command('update')
+def update():
+    '''Download employer and job summary list'''
+    r = itviec.helpers.fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    employers_count = len(r.json())
+    print("Found {} employers.".format(employers_count))
+    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
+        emps_file.write(r.text)
+
+    jobs = []
+    feed = itviec.parsers.JobsFeed()
+    for page in feed:
+        print(".", end='', flush=True)
+        for job_tag in page:
+            job_parser = itviec.parsers.JobTagParser(job_tag)
+            jobs.append(job_parser.get_dict())
+    print("")
+    print("Found {} jobs.".format(len(jobs)))
+    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
+        jobs_file.write(json.dumps(jobs, indent=2, sort_keys=True))
 
 
 @cmd_bp.cli.command('test-emp-feed')

@@ -629,6 +629,9 @@ class JobTagParser:
         )
         self.job["description"] = job_tag.find_all("div", class_="description")[0].text.strip()
 
+    def __repr__(self):
+        return "<JobTagParser id:{} title:{}>".format(self.job["id"], self.job["title"])
+
     def get_dict(self):
         return self.job
 
@@ -758,12 +761,12 @@ class JobTagIterator:
     def __init__(self, content):
         if content is None:
             raise Exception("Page is empty")
-        elif content.__class__.__name__ is "Tag":
+        elif content.__class__.__name__ == "Tag":
             self.job_panel_tag = content
         else:
             self.job_panel_tag = BeautifulSoup(content, "html.parser")
 
-        self.next_block = self.job_panel_tag.find_next(class_="job")
+        self.next_block = self.job_panel_tag.div
 
     def __next__(self):
         if self.next_block is None:
