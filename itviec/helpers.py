@@ -27,16 +27,16 @@ def msg(string):
         print(string)
 
 
-def fetch_url(url):
+def fetch_url(url, headers=config.req_http_headers):
     # print('Fetching url {}'.format(url)) # DEBUG
     error_msg = "Error {0} fetching url: {1}"
 
     try:
-        response = requests.get(url, headers=config.req_http_headers)
-    except ConnectionError as e:
-        print("Can't connect to server: {}".format(e))
-    except HTTPError as e:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
         print(e)
+        exit(1)
 
     # Check response code
     if response.status_code != 200:

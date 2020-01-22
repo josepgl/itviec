@@ -1,10 +1,7 @@
 import os
-
-'''
-- Environment config
-  - Instance config or
-  - Test config
-'''
+# - Environment config
+#   - Instance config or
+#   - Test config
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 DEBUG = True
@@ -38,6 +35,10 @@ class Config:
     # ItViec request header for json
     HTTP_HEADER_X_REQUESTED_WITH = "XMLHttpRequest"
     # HTTP_HEADER_COOKIE = "_ITViec_session=..."
+
+    # Cache files
+    EMPLOYERS_JSON_FILE = os.path.join(basedir, "instance", "employers.json")
+    JOBS_JSON_FILE = os.path.join(basedir, "instance", "jobs.json")
 
 
 class DevelopmentConfig(Config):
