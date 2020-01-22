@@ -134,14 +134,7 @@ def employers_jobs_count():
 
 # job ############################################################
 @job_bp.cli.command('feed2json')
-def job_feed2json(max=None):
-    if max:
-        try:
-            max = int(max)
-        except ValueError:
-            print("'Max' parameter is not a valid integer")
-            raise
-
+def job_feed2json():
     feed = itviec.parsers.JobsFeed()
 
     for j_tag in feed.job_tags():
@@ -149,11 +142,6 @@ def job_feed2json(max=None):
 
         print(p.get_json())
         p.save_json()
-
-        if max:
-            max = max - 1
-            if max < 1:
-                break
 
 
 def load_jobs_json():
@@ -168,8 +156,7 @@ def load_jobs_json():
 
 
 @job_bp.cli.command('json2db')
-def job_json2dict(max=None):
-
+def job_json2dict():
     job_dicts = load_jobs_json()
 
     jobs = []
@@ -177,8 +164,6 @@ def job_json2dict(max=None):
         jobs.append(Job.from_dict(jd))
 
     db.session.commit()
-
-    return None
 
 
 @job_bp.cli.command('show')
