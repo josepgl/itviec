@@ -60,6 +60,76 @@ def update():
     update_jobs()
 
 
+@cmd_bp.cli.command('update-stats')
+def update_stats():
+    update_jobs_stats()
+
+
+def update_jobs_stats():
+    '''Show jobs stats'''
+    with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
+        jobs = json.load(jobs_file)
+    emps = {}
+    tags = {}
+    hcm = 0
+    han = 0
+    other = 0
+    for job in jobs:
+        emp = job["employer_code"]
+
+        if emp in emps:
+            emps[emp] += 1
+        else:
+            emps[emp] = 1
+
+        for tag in job["tags"]:
+            if tag in tags:
+                tags[tag] += 1
+            else:
+                tags[tag] = 1
+
+        if "Ho Chi Minh" in job["address"]:
+            hcm += 1
+        if "Ha Noi" in job["address"]:
+            han += 1
+        if "Ha Noi" not in job["address"] and "Ho Chi Minh" not in job["address"]:
+            other += 1
+
+    print("Found {} jobs on {} employers.".format(len(jobs), len(emps)))
+    print("Found {} tags.".format(len(tags)))
+    print("Found {} jobs in HCM.".format(hcm))
+    print("Found {} jobs in Ha Noi.".format(han))
+    print("Found {} jobs in other locations.".format(other))
+
+    six_jobs = 0
+    five_jobs = 0
+    four_jobs = 0
+    three_jobs = 0
+    two_jobs = 0
+    one_job = 0
+    for emp in emps:
+        if emps[emp] >= 6:
+            six_jobs += 1
+        elif emps[emp] == 5:
+            five_jobs += 1
+        elif emps[emp] == 4:
+            four_jobs += 1
+        elif emps[emp] == 3:
+            three_jobs += 1
+        elif emps[emp] == 2:
+            two_jobs += 1
+        elif emps[emp] == 1:
+            one_job += 1
+    print("Found {} employers with 6 or more offers.".format(six_jobs))
+    print("Found {} employers with 5 offers.".format(five_jobs))
+    print("Found {} employers with 4 offers.".format(four_jobs))
+    print("Found {} employers with 3 offers.".format(three_jobs))
+    print("Found {} employers with 2 offers.".format(two_jobs))
+    print("Found {} employers with 1 offers.".format(one_job))
+    # for date in dates.keys().sort():
+    #     print("{}: ".format(date), "." * dates[date])
+
+
 def update_jobs():
     '''Download job summary list'''
     jobs = []
