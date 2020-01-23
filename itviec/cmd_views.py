@@ -109,8 +109,8 @@ def test_jobs_feed():
         print(job.tags)
 
 
-@cmd_bp.cli.command('update-jobs')
-def update_jobs():
+@cmd_bp.cli.command('upgrade-jobs')
+def upgrade_jobs():
     feed = itviec.parsers.JobsFeed()
     j_count = 1
 
