@@ -18,6 +18,9 @@ def print_json(to_json_string):
 
 class Config:
     INSTANCE_DIR = os.path.join(basedir, "instance")
+    CACHE_DIR = os.path.join(INSTANCE_DIR, "cache")
+    JOBS_CACHE_DIR = os.path.join(CACHE_DIR, "jobs")
+    EMPLOYERS_CACHE_DIR = os.path.join(CACHE_DIR, "employers")
 
     CONFIG_FILENAME = "config.py"
 
@@ -37,8 +40,8 @@ class Config:
     # HTTP_HEADER_COOKIE = "_ITViec_session=..."
 
     # Cache files
-    EMPLOYERS_JSON_FILE = os.path.join(basedir, "instance", "employers.json")
-    JOBS_JSON_FILE = os.path.join(basedir, "instance", "jobs.json")
+    EMPLOYERS_JSON_FILE = os.path.join(CACHE_DIR, "employers.json")
+    JOBS_JSON_FILE = os.path.join(CACHE_DIR, "jobs.json")
 
 
 class DevelopmentConfig(Config):

@@ -1,3 +1,4 @@
+import os
 import json
 import glob
 import click
@@ -18,12 +19,6 @@ job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
 emp_bp = Blueprint('itviec_cmd_employer', __name__, cli_group="employer")
 
 
-@db_bp.cli.command('init')
-def init_db():
-    print("Initializing database")
-    db.init_db()
-
-
 @db_bp.cli.command('stats')
 def stats():
     jobs = Job.query.count()
@@ -40,6 +35,24 @@ def stats():
 
 
 # Commands ###########################################
+@cmd_bp.cli.command('init')
+def init_db():
+    directories = (
+        app.instance_path,
+        app.config["CACHE_DIR"],
+        app.config["JOBS_CACHE_DIR"],
+        app.config["EMPLOYERS_CACHE_DIR"],
+    )
+
+    for directory in directories:
+        if not os.path.exists(directory):
+            print("Creating directory {}".format(directory))
+            os.mkdir(directory)
+
+    print("Initializing database")
+    db.init_db()
+
+
 @cmd_bp.cli.command('update')
 def update():
     '''Download employer and job summary list'''
