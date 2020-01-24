@@ -53,43 +53,6 @@ class Employer(db.base):
     def url(self):
         return config.Config.TEMPLATE_EMPLOYER_URL.format(self.code)
 
-    @classmethod
-    def request_employer(self, code):
-        # employer_url = config.Config.TEMPLATE_EMPLOYER_URL.format(code)
-        # print(employer_url)
-        # employer_response = fetch_url(employer_url)
-        employer_dict = EmployerParser(code)
-        # print(employer_dict)
-
-        # print("#### Review ##################")
-        # review_url = config.Config.TEMPLATE_EMPLOYER_REVIEW_URL.format(code)
-        # review_response = fetch_url(review_url)
-        # review_dict = ReviewParser(review_response.text)
-        # pprint(review_dict['reviews'][0])
-        # print(review_dict)
-
-        # reviews = []
-        # for rev in review_dict["reviews"]:
-        #     reviews.append(Review(**rev))
-        # print("reviews: " + str(reviews))
-        # print("#### End of Review ###########")
-        # employer_dict.last_update(review_dict)
-
-        # jobs = []
-        # for job in employer_dict["jobs"]:
-        #     jobs.append(Job(id=job))
-
-        # employer_dict['jobs'] = []
-        # employer_dict['reviews'] = []
-        employer_dict['overview'] = "<overview len:{}>".format(len(employer_dict['overview']))
-        # print("employer_dict:")
-        # pprint(employer_dict)
-        employer = Employer(**employer_dict)
-        # employer.jobs = jobs
-        # employer.reviews = reviews
-
-        return employer
-
 
 class Job(db.base):
     __tablename__ = 'job'
@@ -133,12 +96,6 @@ class Job(db.base):
     def save(self):
         db.session.add(self)
         db.session.commit()
-
-    @classmethod
-    def from_tag(self, tag):
-        job_p = JobTagParser(tag)
-        job_dict = job_p.get_dict()
-        return self.from_dict(job_dict)
 
     @classmethod
     def from_dict(self, job_dict):

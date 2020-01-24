@@ -207,9 +207,10 @@ def test_emp_feed():
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
         print("Employer code: {}".format(emp_code))
-        emp_instance = Employer.request_employer(emp_code)
+        employer_p = itviec.parsers.EmployerParser(emp_code)
+        employer = Employer(**employer_p)
         emp_sum = "Jobs: {} Reviews: {}"
-        print(emp_instance, emp_sum.format(len(emp_instance.jobs), len(emp_instance.reviews)))
+        print(employer, emp_sum.format(len(employer.jobs), len(employer.reviews)))
         print("<------------------------------------>")
 
 
@@ -218,7 +219,8 @@ def test_jobs_feed():
     feed = itviec.parsers.JobsFeed()
 
     for job_tag in feed.job_tags():
-        job = Job.from_tag(job_tag)
+        job_p = itviec.parsers.JobTagParser(job_tag)
+        job = Job.from_dict(job_p.get_dict())
 
         print(job.last_update, job, "@", job.employer_code)
         print(job.address)
@@ -231,7 +233,8 @@ def upgrade_jobs():
     j_count = 1
 
     for j_tag in feed.job_tags():
-        job = Job.from_tag(j_tag)
+        job_p = itviec.parsers.JobTagParser(j_tag)
+        job = Job.from_dict(job_p.get_dict())
         job.save()
 
         job_msg = "{}: {} @ {}"
