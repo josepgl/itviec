@@ -1,4 +1,7 @@
+import os
 import json
+from datetime import datetime, timedelta
+
 from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
 
@@ -249,7 +252,8 @@ class EmployerParser:
 
     def _parse_jobs_panel(self, panel_tag):
         jobs = []
-        for job_tag in JobTagIterator(panel_tag):
+        panel_body_tag = panel_tag.find(class_="panel-body")
+        for job_tag in JobTagIterator(panel_body_tag):
             jobs.append(JobTagParser(job_tag).get_dict())
 
         return jobs
@@ -317,12 +321,13 @@ class EmployerParser:
         return temp
 
     def get_json(self):
-        return json.dumps(self.emp, sort_keys=True, indent=4)
+        return json.dumps(self.emp, sort_keys=True, indent=2)
 
     def save_json(self):
-        filename = "{}/employers/{}.json".format(app.instance_path, self.emp["code"])
-        with open(filename, 'w') as json_file:
-            json.dump(self.emp, json_file, sort_keys=True, indent=4)
+        filename = "{}.json".format(self.emp["code"])
+        filepath = os.path.join(app.config["EMPLOYERS_CACHE_DIR"], filename)
+        with open(filepath, 'w') as json_file:
+            json.dump(self.emp, json_file, sort_keys=True, indent=2)
 
 
 class ReviewsFeed:
@@ -338,7 +343,6 @@ class ReviewsFeed:
 
     def reviews(self):
         for page in ReviewPageIterator(self.url()):
-            print(page)
             for review_tag in page:
                 yield review_tag
 
@@ -355,7 +359,6 @@ class ReviewPageIterator:
         if self.url is None or self.url is "":
             raise StopIteration("Error: No URL for current iteration")
 
-        print(self.url)
         response = fetch_url(self.url)
         prev_url = None
         next_url = None
@@ -379,20 +382,19 @@ class ReviewPageIterator:
 class ReviewIterator:
 
     def __init__(self, panel_tag):
-
-        self.panel_tag = panel_tag
-        self.next_block = self.panel_tag.find_next(class_="content-of-review")
+        self.next_block = panel_tag
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.next_block is None:
+        try:
+            self.next_block = self.next_block.find_next(class_="content-of-review")
+            assert self.next_block.__class__.__name__ == "Tag"
+        except (AttributeError, AssertionError):
             raise StopIteration("No more blocks in page")
 
-        block = self.next_block
-        self.next_block = self.next_block.find_next(class_="content-of-review")
-        return block
+        return self.next_block
 
 
 class ReviewParser:
@@ -576,7 +578,13 @@ class JobParser:
         tag_list = header.find("div", class_="tag-list")
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
-        job["full_address"] = "".join(header.find("div", class_="address__full-address").strings).strip()
+
+        job["locations"] = []
+        for address_tag in header.find_all("div", class_="address"):
+            address_span = address_tag.span
+            if address_span:
+                full_address = "".join(address_tag.span.strings).strip()
+                job["locations"].append(full_address)
 
         reasons = job_detail.find("div", class_="job_reason_to_join_us")
         job["reasons"] = str(reasons)
@@ -605,6 +613,15 @@ class JobParser:
     def get_dict(self):
         return self.job
 
+    def get_json(self):
+        return json.dumps(self.job, sort_keys=True, indent=2)
+
+    def save_json(self):
+        filename = "{}.json".format(self.job["id"])
+        filepath = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
+        with open(filepath, 'w') as json_file:
+            json.dump(self.job, json_file, sort_keys=True, indent=2)
+
 
 class JobTagParser:
     def __init__(self, job_tag):
@@ -620,6 +637,7 @@ class JobTagParser:
         self.job["title"] = job_tag.find_all("a")[1].text.strip()
         self.job["employer_code"] = job_tag.find_all("a", {"target": "_blank"})[0]["href"].split("/")[-1]
         self.job["url"] = job_tag.find("div", class_="details").a["href"]
+        self.job["code"] = self.job["url"].split("/")[-1]
         self.job["salary"] = job_tag.find_all("span", class_="salary-text")[0].text.strip()
         self.job["address"] = (
             job_tag.find_all("div", class_="address")[0].text.strip().split("\n\n\n")
@@ -628,6 +646,8 @@ class JobTagParser:
             job_tag.find_all("div", class_="tag-list")[0].text.strip().split("\n\n\n")
         )
         self.job["description"] = job_tag.find_all("div", class_="description")[0].text.strip()
+        self.job["posted_tag"] = job_tag.find_all("span", class_="distance-time")[0].text.strip()
+        self.job["posted_on"] = get_post_date(self.job["posted_tag"])
 
     def __repr__(self):
         return "<JobTagParser id:{} title:{}>".format(self.job["id"], self.job["title"])
@@ -636,12 +656,24 @@ class JobTagParser:
         return self.job
 
     def get_json(self):
-        return json.dumps(self.job, sort_keys=True, indent=4)
+        return json.dumps(self.job, sort_keys=True, indent=2)
 
     def save_json(self):
         filename = "{}/jobs/{}.json".format(app.instance_path, self.job["id"])
         with open(filename, 'w') as json_file:
-            json.dump(self.job, json_file, sort_keys=True, indent=4)
+            json_file.write(to_json(self.job))
+            json.dump(self.job, json_file, sort_keys=True, indent=2)
+
+
+def get_post_date(post_date):
+    (count, unit, _) = post_date.split(" ")
+    if unit.startswith("minute"):
+        posted = datetime.now() - timedelta(minutes=int(count))
+    elif unit.startswith("hour"):
+        posted = datetime.now() - timedelta(hours=int(count))
+    elif unit.startswith("day"):
+        posted = datetime.now() - timedelta(days=int(count))
+    return str(posted)
 
 
 class JobsFeed:

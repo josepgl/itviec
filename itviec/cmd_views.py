@@ -1,6 +1,8 @@
 import os
+import time
 import json
 import glob
+
 import click
 from flask import Blueprint
 from flask import current_app as app
@@ -142,7 +144,7 @@ def update_jobs():
     print("")
     print("Found {} jobs.".format(len(jobs)))
     with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
-        jobs_file.write(json.dumps(jobs, indent=2, sort_keys=True))
+        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
 
 
 def update_employers():
@@ -151,7 +153,51 @@ def update_employers():
     employers_count = len(r.json())
     print("Found {} employers.".format(employers_count))
     with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(r.text)
+        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
+
+
+@cmd_bp.cli.command('download')
+def download():
+    try:
+        with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
+            jobs = json.load(jobs_file)
+    except FileNotFoundError:
+        print("Job list missing. Run 'flask update' first.")
+        exit(1)
+
+    employer_list = get_employers(jobs)
+    print("{} employers".format(len(employer_list)))
+    print("{} jobs".format(len(jobs)))
+
+    for employer_code in employer_list:
+        download_employer(employer_code)
+        time.sleep(3)
+
+    for job in jobs:
+        download_job(job["code"])
+        time.sleep(1)
+
+
+def download_job(job_code):
+    job_p = itviec.parsers.JobParser(job_code)
+    job_p.fetch_and_parse()
+    job_p.save_json()
+    return job_p.get_dict()
+
+
+def download_employer(employer_code):
+    employer_p = itviec.parsers.EmployerParser(employer_code)
+    employer_p.fetch_and_parse()
+    employer_p.fetch_and_parse_reviews()
+    employer_p.save_json()
+    return employer_p.get_dict()
+
+
+def get_employers(job_list):
+    employers = {}
+    for job in job_list:
+        employers[job["employer_code"]] = None
+    return employers.keys()
 
 
 @cmd_bp.cli.command('test-emp-feed')
