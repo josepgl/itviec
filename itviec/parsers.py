@@ -390,9 +390,11 @@ class ReviewIterator:
     def __next__(self):
         try:
             self.next_block = self.next_block.find_next(class_="content-of-review")
-            assert self.next_block.__class__.__name__ == "Tag"
-        except (AttributeError, AssertionError):
-            raise StopIteration("No more blocks in page")
+        except AttributeError:
+            raise StopIteration
+
+        if self.next_block.__class__.__name__ != "Tag":
+            raise StopIteration
 
         return self.next_block
 
@@ -497,8 +499,6 @@ class ReviewParser:
                 ratings_tbl = left_column.find("table", class_="ratings-specific")
 
                 for row in ratings_tbl.find_all("tr"):
-                    row.contents
-
                     td_name = row.contents[1].span.string
                     td_rate = row.contents[5].string.split()[0]
 
@@ -661,7 +661,6 @@ class JobTagParser:
     def save_json(self):
         filename = "{}/jobs/{}.json".format(app.instance_path, self.job["id"])
         with open(filename, 'w') as json_file:
-            json_file.write(to_json(self.job))
             json.dump(self.job, json_file, sort_keys=True, indent=2)
 
 
