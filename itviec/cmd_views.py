@@ -1,5 +1,8 @@
+import os
+import time
 import json
 import glob
+
 import click
 from flask import Blueprint
 from flask import current_app as app
@@ -18,12 +21,6 @@ job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
 emp_bp = Blueprint('itviec_cmd_employer', __name__, cli_group="employer")
 
 
-@db_bp.cli.command('init')
-def init_db():
-    print("Initializing database")
-    db.init_db()
-
-
 @db_bp.cli.command('stats')
 def stats():
     jobs = Job.query.count()
@@ -40,11 +37,96 @@ def stats():
 
 
 # Commands ###########################################
+@cmd_bp.cli.command('init')
+def init_db():
+    directories = (
+        app.instance_path,
+        app.config["CACHE_DIR"],
+        app.config["JOBS_CACHE_DIR"],
+        app.config["EMPLOYERS_CACHE_DIR"],
+    )
+
+    for directory in directories:
+        if not os.path.exists(directory):
+            print("Creating directory {}".format(directory))
+            os.mkdir(directory)
+
+    print("Initializing database")
+    db.init_db()
+
+
 @cmd_bp.cli.command('update')
 def update():
     '''Download employer and job summary list'''
     update_employers()
     update_jobs()
+
+
+@cmd_bp.cli.command('update-stats')
+def update_stats():
+    update_jobs_stats()
+
+
+def update_jobs_stats():
+    '''Show jobs stats'''
+    with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
+        jobs = json.load(jobs_file)
+
+    emps = {}
+    tags = {}
+    locs = {
+        "Ho Chi Minh": 0,
+        "Ha Noi": 0,
+        "Da Nang": 0,
+        "Others": 0,
+    }
+
+    for job in jobs:
+        add_job_to_employer(emps, job)
+        count_job_tags(tags, job)
+        count_job_locations(locs, job)
+
+    print("Found {} jobs on {} employers.".format(len(jobs), len(emps)))
+    print("Found {} tags.".format(len(tags)))
+    for loc in locs:
+        print("Found {} jobs in {}.".format(locs[loc], loc))
+
+    emp_with_jobs = emps_per_job_count(emps)
+    for count in sorted(emp_with_jobs):
+        print("Found {} employers with {} offers.".format(emp_with_jobs[count], count))
+
+
+def add_job_to_employer(emps, job):
+    emp = job["employer_code"]
+    if emp in emps:
+        emps[emp] += 1
+    else:
+        emps[emp] = 1
+
+
+def count_job_tags(tags, job):
+    for tag in job["tags"]:
+        if tag in tags:
+            tags[tag] += 1
+        else:
+            tags[tag] = 1
+
+
+def count_job_locations(locs, job):
+    for location in job["address"]:
+        if location in locs:
+            locs[location] += 1
+
+
+def emps_per_job_count(emps):
+    emp_with_jobs = {}
+    for emp in emps:
+        count = emps[emp]
+        if count in emp_with_jobs:
+            emp_with_jobs[count] += 1
+        else:
+            emp_with_jobs[count] = 1
+    return emp_with_jobs
 
 
 def update_jobs():
@@ -59,7 +141,7 @@ def update_jobs():
     print("")
     print("Found {} jobs.".format(len(jobs)))
     with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
-        jobs_file.write(json.dumps(jobs, indent=2, sort_keys=True))
+        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
 
 
 def update_employers():
@@ -68,7 +150,51 @@ def update_employers():
     employers_count = len(r.json())
     print("Found {} employers.".format(employers_count))
     with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(r.text)
+        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
+
+
+@cmd_bp.cli.command('download')
+def download():
+    try:
+        with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
+            jobs = json.load(jobs_file)
+    except FileNotFoundError:
+        print("Job list missing. Run 'flask update' first.")
+        exit(1)
+
+    employer_list = get_employers(jobs)
+    print("{} employers".format(len(employer_list)))
+    print("{} jobs".format(len(jobs)))
+
+    for employer_code in employer_list:
+        download_employer(employer_code)
+        time.sleep(3)
+
+    for job in jobs:
+        download_job(job["code"])
+        time.sleep(1)
+
+
+def download_job(job_code):
+    job_p = itviec.parsers.JobParser(job_code)
+    job_p.fetch_and_parse()
+    job_p.save_json()
+    return job_p.get_dict()
+
+
+def download_employer(employer_code):
+    employer_p = itviec.parsers.EmployerParser(employer_code)
+    employer_p.fetch_and_parse()
+    employer_p.fetch_and_parse_reviews()
+    employer_p.save_json()
+    return employer_p.get_dict()
+
+
+def get_employers(job_list):
+    employers = {}
+    for job in job_list:
+        employers[job["employer_code"]] = None
+    return employers.keys()
 
 
 @cmd_bp.cli.command('test-emp-feed')
@@ -78,9 +204,10 @@ def test_emp_feed():
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
         print("Employer code: {}".format(emp_code))
-        emp_instance = Employer.request_employer(emp_code)
+        employer_p = itviec.parsers.EmployerParser(emp_code)
+        employer = Employer(**employer_p)
         emp_sum = "Jobs: {} Reviews: {}"
-        print(emp_instance, emp_sum.format(len(emp_instance.jobs), len(emp_instance.reviews)))
+        print(employer, emp_sum.format(len(employer.jobs), len(employer.reviews)))
         print("<------------------------------------>")
 
 
@@ -89,20 +216,22 @@ def test_jobs_feed():
     feed = itviec.parsers.JobsFeed()
 
     for job_tag in feed.job_tags():
-        job = Job.from_tag(job_tag)
+        job_p = itviec.parsers.JobTagParser(job_tag)
+        job = Job.from_dict(job_p.get_dict())
 
         print(job.last_update, job, "@", job.employer_code)
         print(job.address)
         print(job.tags)
 
 
-@cmd_bp.cli.command('update-jobs')
-def update_jobs():
+@cmd_bp.cli.command('upgrade-jobs')
+def upgrade_jobs():
     feed = itviec.parsers.JobsFeed()
     j_count = 1
 
     for j_tag in feed.job_tags():
-        job = Job.from_tag(j_tag)
+        job_p = itviec.parsers.JobTagParser(j_tag)
+        job = Job.from_dict(job_p.get_dict())
         job.save()
 
         job_msg = "{}: {} @ {}"
@@ -134,14 +263,7 @@ def employers_jobs_count():
 
 # job ############################################################
 @job_bp.cli.command('feed2json')
-def job_feed2json(max=None):
-    if max:
-        try:
-            max = int(max)
-        except ValueError:
-            print("'Max' parameter is not a valid integer")
-            raise
-
+def job_feed2json():
     feed = itviec.parsers.JobsFeed()
 
     for j_tag in feed.job_tags():
@@ -149,11 +271,6 @@ def job_feed2json(max=None):
 
         print(p.get_json())
         p.save_json()
-
-        if max:
-            max = max - 1
-            if max < 1:
-                break
 
 
 def load_jobs_json():
@@ -168,8 +285,7 @@ def load_jobs_json():
 
 
 @job_bp.cli.command('json2db')
-def job_json2dict(max=None):
-
+def job_json2dict():
     job_dicts = load_jobs_json()
 
     jobs = []
@@ -177,8 +293,6 @@ def job_json2dict(max=None):
         jobs.append(Job.from_dict(jd))
 
     db.session.commit()
-
-    return None
 
 
 @job_bp.cli.command('show')
@@ -221,8 +335,6 @@ def parse_employer(code):
 @emp_bp.cli.command('feed2json')
 @click.argument('max_count', default=10_000)
 def employer_feed2json(max_count=None):
-    import time
-
     if max_count is None:
         max_count = 100_000
     max_count = int(max_count)
@@ -264,8 +376,6 @@ def employer_feed2json(max_count=None):
 @emp_bp.cli.command('prio2json')
 @click.argument('max_count', default=None)
 def employer_prio2json(max_count):
-    import time
-
     if max_count is None:
         max_count = 100_000
     max_count = int(max_count)
