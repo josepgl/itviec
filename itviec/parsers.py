@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
 
+from itviec.feeds import ReviewsFeed
 from itviec.helpers import fetch_url
 
 

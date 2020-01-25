@@ -7,9 +7,9 @@ import click
 from flask import Blueprint
 from flask import current_app as app
 
-import itviec.helpers
+from itviec.helpers import fetch_url
 from itviec.feeds import EmployersFeed, JobsFeed
-import itviec.parsers
+from itviec.parsers import JobTagParser, JobParser, EmployerParser
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag, Address
 
@@ -133,11 +133,11 @@ def emps_per_job_count(emps):
 def update_jobs():
     '''Download job summary list'''
     jobs = []
-    feed = itviec.feeds.JobsFeed()
+    feed = JobsFeed()
     for page in feed:
         print(".", end='', flush=True)
         for job_tag in page:
-            job_parser = itviec.parsers.JobTagParser(job_tag)
+            job_parser = JobTagParser(job_tag)
             jobs.append(job_parser.get_dict())
     print("")
     print("Found {} jobs.".format(len(jobs)))
@@ -147,7 +147,7 @@ def update_jobs():
 
 def update_employers():
     '''Download employer list'''
-    r = itviec.helpers.fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
     employers_count = len(r.json())
     print("Found {} employers.".format(employers_count))
     with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
@@ -177,14 +177,14 @@ def download():
 
 
 def download_job(job_code):
-    job_p = itviec.parsers.JobParser(job_code)
+    job_p = JobParser(job_code)
     job_p.fetch_and_parse()
     job_p.save_json()
     return job_p.get_dict()
 
 
 def download_employer(employer_code):
-    employer_p = itviec.parsers.EmployerParser(employer_code)
+    employer_p = EmployerParser(employer_code)
     employer_p.fetch_and_parse()
     employer_p.fetch_and_parse_reviews()
     employer_p.save_json()
@@ -205,7 +205,7 @@ def test_emp_feed():
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
         print("Employer code: {}".format(emp_code))
-        employer_p = itviec.parsers.EmployerParser(emp_code)
+        employer_p = EmployerParser(emp_code)
         employer = Employer(**employer_p)
         emp_sum = "Jobs: {} Reviews: {}"
         print(employer, emp_sum.format(len(employer.jobs), len(employer.reviews)))
@@ -217,7 +217,7 @@ def test_jobs_feed():
     feed = JobsFeed()
 
     for job_tag in feed.job_tags():
-        job_p = itviec.parsers.JobTagParser(job_tag)
+        job_p = JobTagParser(job_tag)
         job = Job.from_dict(job_p.get_dict())
 
         print(job.last_update, job, "@", job.employer_code)
@@ -231,7 +231,7 @@ def upgrade_jobs():
     j_count = 1
 
     for j_tag in feed.job_tags():
-        job_p = itviec.parsers.JobTagParser(j_tag)
+        job_p = JobTagParser(j_tag)
         job = Job.from_dict(job_p.get_dict())
         job.save()
 
@@ -268,7 +268,7 @@ def job_feed2json():
     feed = JobsFeed()
 
     for j_tag in feed.job_tags():
-        p = itviec.parsers.JobTagParser(j_tag)
+        p = JobTagParser(j_tag)
 
         print(p.get_json())
         p.save_json()
@@ -305,7 +305,7 @@ def job_show(jid):
 @job_bp.cli.command('parse')
 @click.argument('code')
 def parse_job(code):
-    job_p = itviec.parsers.JobParser(code)
+    job_p = JobParser(code)
     job_p.fetch_and_parse()
     job_d = job_p.digest()
 
@@ -315,7 +315,7 @@ def parse_job(code):
 @job_bp.cli.command('instance')
 @click.argument('code')
 def instantiate_job(code):
-    job_p = itviec.parsers.JobParser(code)
+    job_p = JobParser(code)
     job_p.fetch_and_parse()
     job = Job.from_dict(job_p.get_dict())
 
@@ -326,7 +326,7 @@ def instantiate_job(code):
 @emp_bp.cli.command('parse')
 @click.argument('code')
 def parse_employer(code):
-    employer_p = itviec.parsers.EmployerParser(code)
+    employer_p = EmployerParser(code)
     employer_p.fetch_and_parse()
     employer_p.fetch_and_parse_reviews()
 
@@ -402,7 +402,7 @@ def employer_prio2json(max_count):
 
         print("#{} {}".format(loop_count, emp_code))
 
-        p = itviec.parsers.EmployerParser(emp_code)
+        p = EmployerParser(emp_code)
         p.fetch_and_parse()
         p.save_json()
 
