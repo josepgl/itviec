@@ -39,7 +39,7 @@ def stats():
 
 # Commands ###########################################
 @cmd_bp.cli.command('init')
-def init_db():
+def init():
     directories = (
         app.instance_path,
         app.config["CACHE_DIR"],
@@ -364,7 +364,7 @@ def employer_feed2json(max_count=None):
 
         print("#{} {}".format(loop_count, emp_code))
 
-        p = itviec.parsers.EmployerParser(emp_code)
+        p = EmployerParser(emp_code)
         p.fetch_and_parse()
         p.save_json()
 
