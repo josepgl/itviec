@@ -71,65 +71,62 @@ def update_jobs_stats():
     '''Show jobs stats'''
     with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
         jobs = json.load(jobs_file)
+
     emps = {}
     tags = {}
-    hcm = 0
-    han = 0
-    other = 0
+    locs = {
+        "Ho Chi Minh": 0,
+        "Ha Noi": 0,
+        "Da Nang": 0,
+        "Others": 0,
+    }
+
     for job in jobs:
-        emp = job["employer_code"]
-
-        if emp in emps:
-            emps[emp] += 1
-        else:
-            emps[emp] = 1
-
-        for tag in job["tags"]:
-            if tag in tags:
-                tags[tag] += 1
-            else:
-                tags[tag] = 1
-
-        if "Ho Chi Minh" in job["address"]:
-            hcm += 1
-        if "Ha Noi" in job["address"]:
-            han += 1
-        if "Ha Noi" not in job["address"] and "Ho Chi Minh" not in job["address"]:
-            other += 1
+        add_job_to_employer(emps, job)
+        count_job_tags(tags, job)
+        count_job_locations(locs, job)
 
     print("Found {} jobs on {} employers.".format(len(jobs), len(emps)))
     print("Found {} tags.".format(len(tags)))
-    print("Found {} jobs in HCM.".format(hcm))
-    print("Found {} jobs in Ha Noi.".format(han))
-    print("Found {} jobs in other locations.".format(other))
+    for loc in locs:
+        print("Found {} jobs in {}.".format(locs[loc], loc))
 
-    six_jobs = 0
-    five_jobs = 0
-    four_jobs = 0
-    three_jobs = 0
-    two_jobs = 0
-    one_job = 0
+    emp_with_jobs = emps_per_job_count(emps)
+    for count in sorted(emp_with_jobs):
+        print("Found {} employers with {} offers.".format(emp_with_jobs[count], count))
+
+
+def add_job_to_employer(emps, job):
+    emp = job["employer_code"]
+    if emp in emps:
+        emps[emp] += 1
+    else:
+        emps[emp] = 1
+
+
+def count_job_tags(tags, job):
+    for tag in job["tags"]:
+        if tag in tags:
+            tags[tag] += 1
+        else:
+            tags[tag] = 1
+
+
+def count_job_locations(locs, job):
+    for location in job["address"]:
+        if location in locs:
+            locs[location] += 1
+
+
+def emps_per_job_count(emps):
+    emp_with_jobs = {}
     for emp in emps:
-        if emps[emp] >= 6:
-            six_jobs += 1
-        elif emps[emp] == 5:
-            five_jobs += 1
-        elif emps[emp] == 4:
-            four_jobs += 1
-        elif emps[emp] == 3:
-            three_jobs += 1
-        elif emps[emp] == 2:
-            two_jobs += 1
-        elif emps[emp] == 1:
-            one_job += 1
-    print("Found {} employers with 6 or more offers.".format(six_jobs))
-    print("Found {} employers with 5 offers.".format(five_jobs))
-    print("Found {} employers with 4 offers.".format(four_jobs))
-    print("Found {} employers with 3 offers.".format(three_jobs))
-    print("Found {} employers with 2 offers.".format(two_jobs))
-    print("Found {} employers with 1 offers.".format(one_job))
-    # for date in dates.keys().sort():
-    #     print("{}: ".format(date), "." * dates[date])
+        count = emps[emp]
+        if count in emp_with_jobs:
+            emp_with_jobs[count] += 1
+        else:
+            emp_with_jobs[count] = 1
+    return emp_with_jobs
 
 
 def update_jobs():
