@@ -335,8 +335,6 @@ def parse_employer(code):
 @emp_bp.cli.command('feed2json')
 @click.argument('max_count', default=10_000)
 def employer_feed2json(max_count=None):
-    import time
-
     if max_count is None:
         max_count = 100_000
     max_count = int(max_count)
@@ -378,8 +376,6 @@ def employer_feed2json(max_count=None):
 @emp_bp.cli.command('prio2json')
 @click.argument('max_count', default=None)
 def employer_prio2json(max_count):
-    import time
-
     if max_count is None:
         max_count = 100_000
     max_count = int(max_count)
