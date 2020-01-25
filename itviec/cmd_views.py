@@ -63,6 +63,30 @@ def update():
     update_jobs()
 
 
+def update_jobs():
+    '''Download job summary list'''
+    jobs = []
+    feed = JobsFeed()
+    for page in feed:
+        print(".", end='', flush=True)
+        for job_tag in page:
+            job_parser = JobTagParser(job_tag)
+            jobs.append(job_parser.get_dict())
+    print("")
+    print("Found {} jobs.".format(len(jobs)))
+    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
+        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
+
+
+def update_employers():
+    '''Download employer list'''
+    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    employers_count = len(r.json())
+    print("Found {} employers.".format(employers_count))
+    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
+        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
+
+
 @cmd_bp.cli.command('update-stats')
 def update_stats():
     update_jobs_stats()
@@ -128,30 +152,6 @@ def emps_per_job_count(emps):
         else:
             emp_with_jobs[count] = 1
     return emp_with_jobs
-
-
-def update_jobs():
-    '''Download job summary list'''
-    jobs = []
-    feed = JobsFeed()
-    for page in feed:
-        print(".", end='', flush=True)
-        for job_tag in page:
-            job_parser = JobTagParser(job_tag)
-            jobs.append(job_parser.get_dict())
-    print("")
-    print("Found {} jobs.".format(len(jobs)))
-    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
-        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
-
-
-def update_employers():
-    '''Download employer list'''
-    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
-    employers_count = len(r.json())
-    print("Found {} employers.".format(employers_count))
-    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
 
 
 @cmd_bp.cli.command('download')
