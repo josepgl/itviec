@@ -8,7 +8,7 @@ from flask import Blueprint
 from flask import current_app as app
 
 import itviec.helpers
-from itviec.feeds import EmployersFeed, JobsFeed, ReviewsFeed
+from itviec.feeds import EmployersFeed, JobsFeed
 import itviec.parsers
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag, Address
