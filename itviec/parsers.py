@@ -579,13 +579,6 @@ class JobParser:
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
 
-        job["locations"] = []
-        for address_tag in header.find_all("div", class_="address"):
-            address_span = address_tag.span
-            if address_span:
-                full_address = "".join(address_tag.span.strings).strip()
-                job["locations"].append(full_address)
-
         reasons = job_detail.find("div", class_="job_reason_to_join_us")
         job["reasons"] = str(reasons)
 
@@ -598,7 +591,20 @@ class JobParser:
         why = job_detail.find("div", class_="love_working_here")
         job["why"] = str(why)
 
+        job["locations"] = self._get_locations(job_detail)
+
         return job
+
+    def _get_locations(self, job_detail_tag):
+        header = job_detail_tag.find("div", class_="header")
+
+        locations = []
+        for address_tag in header.find_all("div", class_="address"):
+            address_span = address_tag.span
+            if address_span:
+                full_address = "".join(address_tag.span.strings).strip()
+                locations.append(full_address)
+        return locations
 
     def digest(self):
         temp = {}
