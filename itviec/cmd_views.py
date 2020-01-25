@@ -7,8 +7,9 @@ import click
 from flask import Blueprint
 from flask import current_app as app
 
-import itviec.parsers
 import itviec.helpers
+from itviec.feeds import EmployersFeed, JobsFeed, ReviewsFeed
+import itviec.parsers
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, JobTag, Address
 
@@ -132,7 +133,7 @@ def emps_per_job_count(emps):
 def update_jobs():
     '''Download job summary list'''
     jobs = []
-    feed = itviec.parsers.JobsFeed()
+    feed = itviec.feeds.JobsFeed()
     for page in feed:
         print(".", end='', flush=True)
         for job_tag in page:
@@ -199,7 +200,7 @@ def get_employers(job_list):
 
 @cmd_bp.cli.command('test-emp-feed')
 def test_emp_feed():
-    feed = itviec.parsers.EmployerFeed()
+    feed = EmployersFeed()
     print("feed.len: " + str(len(feed)))
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
@@ -213,7 +214,7 @@ def test_emp_feed():
 
 @cmd_bp.cli.command('test-jobs-feed')
 def test_jobs_feed():
-    feed = itviec.parsers.JobsFeed()
+    feed = JobsFeed()
 
     for job_tag in feed.job_tags():
         job_p = itviec.parsers.JobTagParser(job_tag)
@@ -226,7 +227,7 @@ def test_jobs_feed():
 
 @cmd_bp.cli.command('upgrade-jobs')
 def upgrade_jobs():
-    feed = itviec.parsers.JobsFeed()
+    feed = JobsFeed()
     j_count = 1
 
     for j_tag in feed.job_tags():
@@ -264,7 +265,7 @@ def employers_jobs_count():
 # job ############################################################
 @job_bp.cli.command('feed2json')
 def job_feed2json():
-    feed = itviec.parsers.JobsFeed()
+    feed = JobsFeed()
 
     for j_tag in feed.job_tags():
         p = itviec.parsers.JobTagParser(j_tag)
@@ -339,7 +340,7 @@ def employer_feed2json(max_count=None):
         max_count = 100_000
     max_count = int(max_count)
 
-    feed = itviec.parsers.EmployerFeed()
+    feed = EmployersFeed()
     print("Employers: {}".format(len(feed)))
     loop_count = 0
 
