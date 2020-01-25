@@ -4,7 +4,6 @@ from sqlalchemy.orm import relationship, backref
 
 import config
 from itviec.db import db
-from itviec.parsers import JobTagParser, EmployerParser
 
 from pprint import pprint
 
