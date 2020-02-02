@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Table, ForeignKey, UniqueConstraint
-from sqlalchemy import Integer, String, Text, Boolean
+from sqlalchemy import Column, Table, ForeignKey
+from sqlalchemy import Integer, Float, String, Text, Boolean
 from sqlalchemy.orm import relationship, backref
 
 import config
@@ -17,6 +17,16 @@ employer_address = Table('employer_address', db.base.metadata,
                          Column('address_id', Integer, ForeignKey('address.id'))
                          )
 
+job_tag = Table('job_tag', db.base.metadata,
+                Column('job_id', Integer, ForeignKey('job.id')),
+                Column('tag_id', Integer, ForeignKey('tag.id'))
+                )
+
+employer_tag = Table('employer_tag', db.base.metadata,
+                     Column('employer_id', Integer, ForeignKey('employer.id')),
+                     Column('tag_id', Integer, ForeignKey('tag.id'))
+                     )
+
 
 class Employer(db.base):
     __tablename__ = 'employer'
@@ -24,27 +34,34 @@ class Employer(db.base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     code = Column(String(128), nullable=False, unique=True)
     name = Column(String(128), nullable=False, unique=True)
-    logo = Column(String(128), nullable=False, unique=True)
-    location = Column(String(128), nullable=False, unique=True)
-    industry = Column(String(128), nullable=False, unique=True)
-    employees = Column(String(128), nullable=False, unique=True)
-    country = Column(String(128), nullable=False, unique=True)
-    working_days = Column(String(128), unique=True)
+    logo = Column(String(128), nullable=False)
+    location = Column(String(128), nullable=False)
+    industry = Column(String(128), nullable=False)
+    employees = Column(String(128), nullable=False)
+    country = Column(String(128), nullable=False)
+    last_update = Column(String(128), nullable=False)
+    working_days = Column(String(128))
     overtime = Column(String(128))
     website = Column(String(128))
 
+    review_count = Column(Integer)
+    review_ratings = Column(Float)
+    review_recommend = Column(Integer)
+
     # Description fields
-    overview = Column(Text(), nullable=False, unique=True)  # Large text
-    why = Column(Text(), nullable=False, unique=True)  # Large text
+    overview = Column(Text(), nullable=False)
+    why = Column(Text())
+    our_people = Column(Text())
 
     addresses = relationship("Address",
                              secondary="employer_address",
                              backref="employers",
-                             # backref=backref("jobs", lazy='dynamic'),
                              )
-    # jobs = relationship('Job', lazy=True)
-    # tags = Column(String(128), ForeignKey('tag.name'), nullable=False)
-    # reviews = relationship('Review', backref='employer', lazy=True)
+    tags = relationship("Tag",
+                        secondary="employer_tag",
+                        backref=backref("employers", lazy='dynamic'),
+                        )
+    reviews = relationship('Review', backref='employer', lazy=True)
 
     def __repr__(self):
         return '<Employer {}: {}>'.format(self.code, self.name)
@@ -57,37 +74,27 @@ class Job(db.base):
     __tablename__ = 'job'
 
     id = Column(Integer, primary_key=True, nullable=False)
-    code = Column(String(128), nullable=False)
+    code = Column(String(256), nullable=False)
     last_update = Column(String(128), nullable=False)
     title = Column(String(128), nullable=False)
     salary = Column(String(128), nullable=False)
     description = Column(Text, nullable=False)
     skills_experience = Column(Text, nullable=False)
     reasons = Column(Text, nullable=False)
-    why = Column(Text, nullable=False)
+    why = Column(Text)
 
-    # address = Column(String(128), nullable=False)
-    full_address = Column(String(128), ForeignKey('address.name'))
-    address = relationship("Address",
-                           # secondary="job_address",
-                           backref="jobs",
-                           # backref=backref("jobs", lazy='dynamic'),
-                           )
+    addresses = relationship("Address",
+                             secondary="job_address",
+                             backref="jobs",
+                             )
 
-    # tags = relationship("Tag",
-    #                     secondary="job_tag",
-    #                     backref="job",
-    #                     backref=backref("jobs", lazy='dynamic'),
-    #                     back_populates="jobs",
-    #                     )
+    tags = relationship("Tag",
+                        secondary="job_tag",
+                        backref=backref("jobs", lazy='dynamic'),
+                        )
 
-    # employer_code = Column(String(128), nullable=False)
     employer_code = Column(String(128), ForeignKey('employer.code'), nullable=False)
     employer = relationship("Employer", backref=backref("jobs", order_by=id))
-    # employer = relationship("Employer",
-    #                         secondary="employer_job",
-    #                         backref="jobs",
-    #                         )
 
     def __repr__(self):
         return '<Job {}: {}>'.format(self.id, self.title)
@@ -125,40 +132,6 @@ class Job(db.base):
 
         return job
 
-    def link_tag(self, tag):
-        has_link = db.session.query(JobTag).filter_by(job_id=self.id, tag_id=tag.id).first()
-
-        if has_link:
-            print("{} already exists".format(has_link))
-            return None
-
-        job_tag_link = JobTag(job_id=self.id, tag_id=tag.id)
-        print("Created: {}".format(job_tag_link))
-        db.session.add(job_tag_link)
-        # db.session.commit()
-
-        return job_tag_link
-
-    def link_tags(self, tags):
-        for tag in tags:
-            self.link_tag(tag)
-
-
-class JobTag(db.base):
-    __tablename__ = 'job_tag'
-
-    job_tag_id = Column(Integer(), primary_key=True)
-    job_id = Column(Integer(), ForeignKey('job.id'))
-    tag_id = Column(Integer(), ForeignKey('tag.id'))
-
-    job = relationship("Job", backref=backref("tags"))
-    tag = relationship("Tag", uselist=False)
-
-    __table_args__ = (UniqueConstraint('job_id', 'tag_id'),)
-
-    def __repr__(self):
-        return '<JobTag job={} tag={}>'.format(self.job_id, self.tag_id)
-
 
 class Tag(db.base):
     __tablename__ = 'tag'
@@ -174,18 +147,21 @@ class Address(db.base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(128), unique=True, nullable=False)
+    full_address = Column(String(128), unique=True, nullable=False)
+    country = Column(String(32))
+    city = Column(String(32))
+    district = Column(String(32))
 
     def __repr__(self):
-        return '<Address {}>'.format(self.name)
+        return "<Address: '{}'>".format(self.full_address)
 
 
 class Review(db.base):
     __tablename__ = 'review'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    title = Column(String(128), unique=True)
-    date = Column(String(128), unique=True)
+    title = Column(String(128))
+    date = Column(String(128))
     employer_code = Column(String(128), ForeignKey('employer.code'), nullable=False)
     last_update = Column(String(128))
     liked = Column(Text())

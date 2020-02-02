@@ -7,11 +7,11 @@ import click
 from flask import Blueprint
 from flask import current_app as app
 
-from itviec.helpers import fetch_url
+from itviec.helpers import fetch_url, to_json_file, to_json
 from itviec.feeds import EmployersFeed, JobsFeed
 from itviec.parsers import JobTagParser, JobParser, EmployerParser
 from itviec.db import db
-from itviec.models import Job, Employer, Tag, JobTag, Address
+from itviec.models import Job, Employer, Tag, Address, Review
 
 # for debugging
 from pprint import pprint
@@ -28,12 +28,10 @@ def stats():
     addresses = Address.query.count()
     employers = Employer.query.count()
     tags = Tag.query.count()
-    jobtags = JobTag.query.count()
 
     print("Jobs: {}".format(jobs))
     print("Tags: {}".format(tags))
     print("Addresses: {}".format(addresses))
-    print("JobTags: {}".format(jobtags))
     print("Employers: {}".format(employers))
 
 
@@ -74,17 +72,15 @@ def update_jobs():
             jobs.append(job_parser.get_dict())
     print("")
     print("Found {} jobs.".format(len(jobs)))
-    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
-        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
+    to_json_file(jobs, app.config["JOBS_JSON_FILE"])
 
 
 def update_employers():
     '''Download employer list'''
-    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
-    employers_count = len(r.json())
+    response = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    employers_count = len(response.json())
     print("Found {} employers.".format(employers_count))
-    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
+    to_json_file(response.json(), app.config["EMPLOYERS_JSON_FILE"])
 
 
 @cmd_bp.cli.command('update-stats')
@@ -154,8 +150,48 @@ def emps_per_job_count(emps):
     return emp_with_jobs
 
 
+def update_jobs():
+    '''Download job summary list'''
+    jobs = []
+    feed = JobsFeed()
+    for page in feed:
+        print(".", end='', flush=True)
+        for job_tag in page:
+            job_parser = JobTagParser(job_tag)
+            jobs.append(job_parser.get_dict())
+    print("")
+    print("Found {} jobs.".format(len(jobs)))
+    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
+        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
+
+
+def update_employers():
+    '''Download employer list'''
+    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
+    employers_count = len(r.json())
+    print("Found {} employers.".format(employers_count))
+    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
+        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
+
+
 @cmd_bp.cli.command('download')
-def download():
+@click.argument('type', default="all")
+def download(type):
+    '''Store jobs and employers related to update in json files'''
+    if type == "all":
+        do_jobs = True
+        do_employers = True
+    elif type == "jobs":
+        do_jobs = True
+        do_employers = False
+    elif type == "employers":
+        do_jobs = False
+        do_employers = True
+    else:
+        print("Error: Invalid download option.")
+        print("Download command accepts: all, jobs, employers. (all)")
+        exit(1)
+
     try:
         with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
             jobs = json.load(jobs_file)
@@ -163,17 +199,29 @@ def download():
         print("Job list missing. Run 'flask update' first.")
         exit(1)
 
-    employer_list = get_employers(jobs)
-    print("{} employers".format(len(employer_list)))
-    print("{} jobs".format(len(jobs)))
+    if do_jobs:
+        job_total = len(jobs)
+        job_count = 0
+        for job in jobs:
+            job_count += 1
+            print("Fetching job {}/{}: {}".format(job_count, job_total, job["code"]))
+            download_job(job["code"])
+            time.sleep(1)
 
-    for employer_code in employer_list:
-        download_employer(employer_code)
-        time.sleep(3)
+    if do_employers:
+        employer_list = get_employers(jobs)
+        emp_total = len(employer_list)
+        emp_count = 0
+        for employer_code in employer_list:
+            emp_count += 1
+            print("Fetching employer {}/{}: {}".format(emp_count, emp_total, employer_code))
+            download_employer(employer_code)
+            time.sleep(1)
 
-    for job in jobs:
-        download_job(job["code"])
-        time.sleep(1)
+    if do_jobs:
+        print("{} jobs".format(job_total))
+    if do_employers:
+        print("{} employers".format(emp_total))
 
 
 def download_job(job_code):
@@ -192,15 +240,169 @@ def download_employer(employer_code):
 
 
 def get_employers(job_list):
-    employers = {}
-    for job in job_list:
-        employers[job["employer_code"]] = None
-    return employers.keys()
+    employers = {j["employer_code"]: None for j in job_list}
+    return list(employers.keys())
+
+
+@cmd_bp.cli.command('load')
+def load():
+    '''Will load employers from newest jobs to oldest'''
+    jobs = list(downloaded_jobs())
+    employer_list = get_employers(jobs)
+
+    for emp_code in employer_list:
+        print("# Employer: {}".format(emp_code))
+
+        emp_d = get_employer_dict(emp_code)
+        compose_employer_reviews(emp_d)
+        jobtags_to_jobcodes(emp_d)
+        jobcodes_to_jobs(emp_d)
+        str_to_address(emp_d)
+        str_to_tag(emp_d)
+        emp_d["why"] = to_json(emp_d["why"], indent=None)
+
+        emp = Employer(**emp_d)
+        db.session.add(emp)
+        db.session.commit()
+
+
+def compose_employer_reviews(employer):
+    reviews = []
+    for rev_d in employer["reviews"]:
+        rev_d["employer_code"] = employer["code"]
+        review = Review(**rev_d)
+        reviews.append(review)
+        db.session.add(review)
+    employer["reviews"] = reviews
+
+
+def jobcodes_to_jobs(employer):
+    jobs = []
+    for job_code in employer["jobs"]:
+        print("    \\- Job: {}".format(job_code))
+        job = db.session.query(Job).filter_by(code=job_code).first()
+        if job:
+            print("<*> FOUND Job by code '{}': {}".format(job_code, job))
+
+        if job is None:
+            job_d = get_job_dict(job_code)
+            job_id = int(job_d["id"])
+            job = db.session.query(Job).filter_by(id=job_id).first()
+            if job:
+                print("<*> FOUND Job by ID '{}': {}".format(job_id, job))
+
+        if job is None:
+            str_to_tag(job_d)
+            str_to_address(job_d)
+
+            job = Job(**job_d)
+            db.session.add(job)
+
+        jobs.append(job)
+        db.session.commit()
+
+    employer["jobs"] = jobs
+
+
+def str_to_tag(item):
+    tag_list = []
+    for tag_name in item["tags"]:
+        tag = db.session.query(Tag).filter_by(name=tag_name).first()
+        if tag is None:
+            tag = Tag(name=tag_name)
+            db.session.add(tag)
+        tag_list.append(tag)
+    item["tags"] = tag_list
+
+
+def str_to_address(item):
+    addr_list = []
+    for full_addr in item["addresses"]:
+        if full_addr == '':
+            continue
+        addr = db.session.query(Address).filter_by(full_address=full_addr).first()
+        if addr is None:
+            try:
+                addr_list = full_addr.split(", ")[-2:]
+                city = addr_list.pop()
+                if len(addr_list):
+                    district = addr_list.pop()
+                    addr = Address(full_address=full_addr, city=city, district=district)
+                else:
+                    addr = Address(full_address=full_addr, city=city)
+            except ValueError:
+                print("Address: '{}'".format(full_addr))
+                raise
+            db.session.add(addr)
+        addr_list.append(addr)
+    item["addresses"] = addr_list
+
+
+def jobtags_to_jobcodes(employer):
+    job_codes = []
+    for jt in employer["jobs"]:
+        job_codes.append(jt["code"])
+    employer["jobs"] = job_codes
+
+
+def get_employer_dict(employer_code):
+    filename = "{}.json".format(employer_code)
+    path = os.path.join(app.config["EMPLOYERS_CACHE_DIR"], filename)
+
+    try:
+        with open(path, "r") as json_file:
+            return json.load(json_file)
+    except FileNotFoundError:
+        # print("Could not find file: {}".format(path))
+        pass
+
+    emp_p = EmployerParser(employer_code)
+    emp_p.run()
+
+    return emp_p.get_dict()
+
+
+def get_job_dict(job_code):
+    filename = "{}.json".format(job_code)
+    path = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
+
+    try:
+        with open(path, "r") as json_file:
+            return json.load(json_file)
+    except FileNotFoundError:
+        # print("Could not find file: {}".format(path))
+        pass
+
+    job_p = JobParser(job_code)
+    job_p.run()
+
+    return job_p.get_dict()
+
+
+def downloaded_jobs():
+    return downloaded_json("job")
+
+
+def downloaded_employers():
+    return downloaded_json("employer")
+
+
+def downloaded_json(item_class):
+    if item_class == "job":
+        path = app.config["JOBS_CACHE_DIR"]
+    elif item_class == "employer":
+        path = app.config["EMPLOYERS_CACHE_DIR"]
+    else:
+        raise Exception("An item class must be specified")
+    filenames = glob.glob("{}/*.json".format(path))
+    for filename in sorted(filenames):
+        with open(filename, 'r') as json_file:
+            yield json.load(json_file)
 
 
 @cmd_bp.cli.command('test-emp-feed')
 def test_emp_feed():
-    feed = EmployersFeed()
+    feed = EmployerFeed()
     print("feed.len: " + str(len(feed)))
     for emp_pack in feed.json:
         emp_code = emp_pack[0]
@@ -242,13 +444,13 @@ def upgrade_jobs():
 
 @cmd_bp.cli.command('tags-count')
 def tags_count():
-    from sqlalchemy import func, desc
-
-    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
-    query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
-    print(query)
-    for row in query:
-        print(row)
+    # from sqlalchemy import func, desc
+    # query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
+    # query = query.join(JobTag).group_by(Tag.name).order_by(desc("count")).limit(20)
+    # print(query)
+    # for row in query:
+    #     print(row)
+    pass
 
 
 @cmd_bp.cli.command('employers-jobs-count')
@@ -275,7 +477,7 @@ def job_feed2json():
 
 
 def load_jobs_json():
-    filenames = glob.glob("{}/jobs/*.json".format(app.instance_path))
+    filenames = glob.glob("{}/*.json".format(app.config["JOBS_CACHE_DIR"]))
 
     job_dicts = []
     for filename in filenames:
@@ -340,7 +542,7 @@ def employer_feed2json(max_count=None):
         max_count = 100_000
     max_count = int(max_count)
 
-    feed = EmployersFeed()
+    feed = EmployerFeed()
     print("Employers: {}".format(len(feed)))
     loop_count = 0
 
