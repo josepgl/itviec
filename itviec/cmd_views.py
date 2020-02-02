@@ -1,7 +1,6 @@
 import os
 import time
 import json
-import glob
 
 import click
 from flask import Blueprint
@@ -10,8 +9,6 @@ from flask import current_app as app
 from itviec import source
 from itviec import cache
 from itviec.helpers import to_json
-from itviec.feeds import JobsFeed
-from itviec.parsers import JobTagParser, JobParser, EmployerParser
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, Address, Review
 
@@ -19,25 +16,8 @@ from itviec.models import Job, Employer, Tag, Address, Review
 from pprint import pprint
 
 cmd_bp = Blueprint('itviec_cmd', __name__, cli_group=None)
-db_bp = Blueprint('itviec_cmd_db', __name__, cli_group="db")
-job_bp = Blueprint('itviec_cmd_job', __name__, cli_group="job")
-emp_bp = Blueprint('itviec_cmd_employer', __name__, cli_group="employer")
 
 
-@db_bp.cli.command('stats')
-def stats():
-    jobs = Job.query.count()
-    addresses = Address.query.count()
-    employers = Employer.query.count()
-    tags = Tag.query.count()
-
-    print("Jobs: {}".format(jobs))
-    print("Tags: {}".format(tags))
-    print("Addresses: {}".format(addresses))
-    print("Employers: {}".format(employers))
-
-
-# Commands ###########################################
 @cmd_bp.cli.command('init')
 def init():
     directories = (
@@ -269,156 +249,3 @@ def jobtags_to_jobcodes(employer):
     for jt in employer["jobs"]:
         job_codes.append(jt["code"])
     employer["jobs"] = job_codes
-
-
-@cmd_bp.cli.command('tags-count')
-def tags_count():
-    tags = db.session.query(Tag).all()
-    jobs_count = Job.query.count()
-
-    result = []
-    for tag in tags:
-        count = len(tag.jobs.all())
-        if not count:
-            continue
-        perc = (count / jobs_count) * 100
-        result.append((tag.name, count, round(perc, 2)))
-    result.sort(key=lambda j: j[1], reverse=True)
-
-    pprint(result)
-
-
-@cmd_bp.cli.command('employers-jobs-count')
-def employers_jobs_count():
-    from sqlalchemy import func, desc
-
-    query = db.session.query(Job.employer_code, func.count(Job.employer_code).label('count'))
-    query = query.group_by(Job.employer_code).order_by(desc("count")).limit(100)
-    print(query)
-    for row in query:
-        print(row)
-
-
-@job_bp.cli.command('show')
-@click.argument('jid')
-def job_show(jid):
-    pprint(Job.query.filter(Job.id == jid).first().__dict__)
-
-
-@job_bp.cli.command('parse')
-@click.argument('code')
-def parse_job(code):
-    job_p = JobParser(code)
-    job_p.fetch_and_parse()
-    job_d = job_p.digest()
-
-    pprint(job_d)
-
-
-@job_bp.cli.command('instance')
-@click.argument('code')
-def instantiate_job(code):
-    job_p = JobParser(code)
-    job_p.fetch_and_parse()
-    job = Job.from_dict(job_p.get_dict())
-
-    pprint(job)
-
-
-# employer ############################################################
-@emp_bp.cli.command('parse')
-@click.argument('code')
-def parse_employer(code):
-    employer_p = EmployerParser(code)
-    employer_p.fetch_and_parse()
-    employer_p.fetch_and_parse_reviews()
-
-    pprint(employer_p.__dict__)
-
-
-@emp_bp.cli.command('feed2json')
-@click.argument('max_count', default=10_000)
-def employer_feed2json(max_count=None):
-    if max_count is None:
-        max_count = 100_000
-    max_count = int(max_count)
-
-    feed = EmployerFeed()
-    print("Employers: {}".format(len(feed)))
-    loop_count = 0
-
-    employer_l = []
-    for (emp_code, _) in feed:
-        employer_l.append(emp_code)
-    employer_l.sort()
-
-    exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
-    start_with = ""
-    skip = True
-
-    for emp_code in employer_l:
-        loop_count = loop_count + 1
-        if start_with == emp_code:
-            skip = False
-        if skip:
-            continue
-        if emp_code in exceptions:
-            continue
-
-        print("#{} {}".format(loop_count, emp_code))
-
-        p = EmployerParser(emp_code)
-        p.fetch_and_parse()
-        p.save_json()
-
-        if loop_count == max_count:
-            break
-
-        time.sleep(1)
-
-
-@emp_bp.cli.command('prio2json')
-@click.argument('max_count', default=None)
-def employer_prio2json(max_count):
-    if max_count is None:
-        max_count = 100_000
-    max_count = int(max_count)
-
-    # To be modified/populated as necessary ###############
-    prio_list = []
-    start_with = ""
-    ####################################
-
-    print("Employers: {}".format(len(prio_list)))
-    exceptions = ("commgate-vn", "proview", "saigon-casa", "skybloom", "wav")  # 404
-    loop_count = 0
-    skip = True
-
-    for emp_code in prio_list:
-        loop_count = loop_count + 1
-        if start_with <= emp_code:
-            skip = False
-        if skip:
-            continue
-        if emp_code in exceptions:
-            continue
-
-        print("#{} {}".format(loop_count, emp_code))
-
-        p = EmployerParser(emp_code)
-        p.fetch_and_parse()
-        p.save_json()
-
-        if loop_count == max_count:
-            break
-
-        time.sleep(1)
-
-
-@emp_bp.cli.command('with-job')
-def employer_with_job():
-    query = db.session.query(Job.employer_code).group_by(Job.employer_code).all()
-    emp_w_job = []
-    for row in query:
-        emp_w_job.append(row[0])
-    print(emp_w_job)
