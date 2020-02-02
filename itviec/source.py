@@ -1,3 +1,5 @@
+import json
+
 from flask import current_app as app
 
 from itviec.feeds import JobsFeed
@@ -30,3 +32,35 @@ def fetch_employers():
 def fetch_all():
     fetch_employers()
     fetch_jobs()
+
+
+def get_jobtags():
+    try:
+        with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
+            jobs = json.load(jobs_file)
+    except FileNotFoundError:
+        print("Job list missing. Run 'flask update' first.")
+        exit(1)
+
+    return jobs
+
+
+def get_job_codes():
+    return [j["code"] for j in get_jobtags()]
+
+
+def get_employer_codes():
+    try:
+        with open(app.config["EMPLOYERS_JSON_FILE"], 'r') as emps_file:
+            employers = json.load(emps_file)
+    except FileNotFoundError:
+        print("Employer list missing. Run 'flask update' first.")
+        exit(1)
+
+    codes = [emp[0] for emp in employers]
+    return codes
+
+
+def get_employers_with_jobs():
+    employers = {j["employer_code"]: None for j in get_jobtags()}
+    return list(employers.keys())

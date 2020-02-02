@@ -146,27 +146,21 @@ def download(type):
         print("Download command accepts: all, jobs, employers. (all)")
         exit(1)
 
-    try:
-        with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
-            jobs = json.load(jobs_file)
-    except FileNotFoundError:
-        print("Job list missing. Run 'flask update' first.")
-        exit(1)
-
     if do_jobs:
-        job_total = len(jobs)
+        job_codes = source.get_job_codes()
+        job_total = len(job_codes)
         job_count = 0
-        for job in jobs:
+        for job_code in job_codes:
             job_count += 1
-            print("Fetching job {}/{}: {}".format(job_count, job_total, job["code"]))
-            download_job(job["code"])
+            print("Fetching job {}/{}: {}".format(job_count, job_total, job_code))
+            download_job(job_code)
             time.sleep(1)
 
     if do_employers:
-        employer_list = get_employers(jobs)
-        emp_total = len(employer_list)
+        employer_codes = source.get_employers_with_jobs()
+        emp_total = len(employer_codes)
         emp_count = 0
-        for employer_code in employer_list:
+        for employer_code in employer_codes:
             emp_count += 1
             print("Fetching employer {}/{}: {}".format(emp_count, emp_total, employer_code))
             download_employer(employer_code)
@@ -193,18 +187,10 @@ def download_employer(employer_code):
     return employer_p.get_dict()
 
 
-def get_employers(job_list):
-    employers = {j["employer_code"]: None for j in job_list}
-    return list(employers.keys())
-
-
 @cmd_bp.cli.command('load')
 def load():
     '''Will load employers from newest jobs to oldest'''
-    jobs = list(downloaded_jobs())
-    employer_list = get_employers(jobs)
-
-    for emp_code in employer_list:
+    for emp_code in source.get_employers_with_jobs():
         print("# Employer: {}".format(emp_code))
 
         emp_d = get_employer_dict(emp_code)
