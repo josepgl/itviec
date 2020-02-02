@@ -32,10 +32,10 @@ def get_job(job_code):
         # print("Could not find file: {}".format(path))
         raise
 
-    job_p = JobParser(job_code)
-    job_p.run()
+    # job_p = JobParser(job_code)
+    # job_p.run()
 
-    return job_p.get_dict()
+    # return job_p.get_dict()
 
 
 def get_employer(employer_code):
@@ -49,7 +49,7 @@ def get_employer(employer_code):
         # print("Could not find file: {}".format(path))
         raise
 
-    emp_p = EmployerParser(employer_code)
-    emp_p.run()
+    # emp_p = EmployerParser(employer_code)
+    # emp_p.run()
 
-    return emp_p.get_dict()
+    # return emp_p.get_dict()
