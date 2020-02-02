@@ -7,8 +7,9 @@ import click
 from flask import Blueprint
 from flask import current_app as app
 
-from itviec.helpers import fetch_url, to_json_file, to_json
-from itviec.feeds import EmployersFeed, JobsFeed
+from itviec import source
+from itviec.helpers import to_json
+from itviec.feeds import JobsFeed
 from itviec.parsers import JobTagParser, JobParser, EmployerParser
 from itviec.db import db
 from itviec.models import Job, Employer, Tag, Address, Review
@@ -57,30 +58,7 @@ def init():
 @cmd_bp.cli.command('update')
 def update():
     '''Download employer and job summary list'''
-    update_employers()
-    update_jobs()
-
-
-def update_jobs():
-    '''Download job summary list'''
-    jobs = []
-    feed = JobsFeed()
-    for page in feed:
-        print(".", end='', flush=True)
-        for job_tag in page:
-            job_parser = JobTagParser(job_tag)
-            jobs.append(job_parser.get_dict())
-    print("")
-    print("Found {} jobs.".format(len(jobs)))
-    to_json_file(jobs, app.config["JOBS_JSON_FILE"])
-
-
-def update_employers():
-    '''Download employer list'''
-    response = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
-    employers_count = len(response.json())
-    print("Found {} employers.".format(employers_count))
-    to_json_file(response.json(), app.config["EMPLOYERS_JSON_FILE"])
+    source.fetch_all()
 
 
 @cmd_bp.cli.command('update-stats')
@@ -148,30 +126,6 @@ def emps_per_job_count(emps):
         else:
             emp_with_jobs[count] = 1
     return emp_with_jobs
-
-
-def update_jobs():
-    '''Download job summary list'''
-    jobs = []
-    feed = JobsFeed()
-    for page in feed:
-        print(".", end='', flush=True)
-        for job_tag in page:
-            job_parser = JobTagParser(job_tag)
-            jobs.append(job_parser.get_dict())
-    print("")
-    print("Found {} jobs.".format(len(jobs)))
-    with open(app.config["JOBS_JSON_FILE"], 'w') as jobs_file:
-        jobs_file.write(json.dumps(jobs, sort_keys=True, indent=2))
-
-
-def update_employers():
-    '''Download employer list'''
-    r = fetch_url(app.config["EMPLOYERS_JSON_URL"], {})
-    employers_count = len(r.json())
-    print("Found {} employers.".format(employers_count))
-    with open(app.config["EMPLOYERS_JSON_FILE"], 'w') as emps_file:
-        emps_file.write(json.dumps(r.json(), sort_keys=True, indent=2))
 
 
 @cmd_bp.cli.command('download')
