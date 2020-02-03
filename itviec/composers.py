@@ -36,7 +36,7 @@ def jobcodes_to_jobs(employer):
         if job is None:
             try:
                 job_d = cache.get_job(job_code)
-            except FileNotFoundError:
+            except OSError:
                 cache.fetch_job(job_code)
                 job_d = cache.get_job(job_code)
             job_id = int(job_d["id"])

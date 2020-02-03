@@ -38,7 +38,7 @@ def get_jobtags():
     try:
         with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
             jobs = json.load(jobs_file)
-    except FileNotFoundError:
+    except OSError:
         print("Job list missing. Run 'flask update' first.")
         exit(1)
 
@@ -53,7 +53,7 @@ def get_employer_codes():
     try:
         with open(app.config["EMPLOYERS_JSON_FILE"], 'r') as emps_file:
             employers = json.load(emps_file)
-    except FileNotFoundError:
+    except OSError:
         print("Employer list missing. Run 'flask update' first.")
         exit(1)
 

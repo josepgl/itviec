@@ -28,7 +28,7 @@ def get_job(job_code):
     try:
         with open(path, "r") as json_file:
             return json.load(json_file)
-    except FileNotFoundError:
+    except OSError:
         # print("Could not find file: {}".format(path))
         raise
 
@@ -45,7 +45,7 @@ def get_employer(employer_code):
     try:
         with open(path, "r") as json_file:
             return json.load(json_file)
-    except FileNotFoundError:
+    except OSError:
         # print("Could not find file: {}".format(path))
         raise
 
