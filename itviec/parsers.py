@@ -474,14 +474,8 @@ class JobParser:
                 - div: skills_experience
                 - div: love_working_here
         '''
-        job = {
-            "id": self.code[self.code.rfind("-") + 1:],
-            "code": self.code,
-            # "reasons": None,
-            # "description": None,
-            # "skills_experience": None,
-            # "why": None,
-        }
+        job = {"code": self.code}
+        job["id"] = self.code[self.code.rfind("-") + 1:]
 
         # exception
         if job["id"] == 'b9dfc7e339de':
