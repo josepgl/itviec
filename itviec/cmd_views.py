@@ -110,16 +110,16 @@ def emps_per_job_count(emps):
 
 
 @cmd_bp.cli.command('download')
-@click.argument('type', default="all")
-def download(type):
+@click.argument('selected_type', default="all")
+def download(selected_type):
     '''Store jobs and employers related to update in json files'''
-    if type == "all":
+    if selected_type == "all":
         do_jobs = True
         do_employers = True
-    elif type == "jobs":
+    elif selected_type == "jobs":
         do_jobs = True
         do_employers = False
-    elif type == "employers":
+    elif selected_type == "employers":
         do_jobs = False
         do_employers = True
     else:
