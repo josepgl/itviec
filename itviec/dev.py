@@ -19,8 +19,9 @@ class CustomJSONEncoder(JSONEncoder):
             elif isinstance(obj, timedelta):
                 return str(obj)
             iterable = iter(obj)
-        except TypeError:
-            pass
+        except TypeError as e:
+            print("TypeError found: {}".format(e))
+            raise
         else:
             return list(iterable)
         return JSONEncoder.default(self, obj)
