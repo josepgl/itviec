@@ -89,10 +89,3 @@ def str_to_address(item):
             db.session.add(addr)
         addr_list.append(addr)
     item["addresses"] = addr_list
-
-
-def jobtags_to_jobcodes(employer):
-    job_codes = []
-    for jt in employer["jobs"]:
-        job_codes.append(jt["code"])
-    employer["jobs"] = job_codes
