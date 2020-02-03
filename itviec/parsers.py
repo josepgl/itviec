@@ -247,7 +247,8 @@ class EmployerParser:
         jobs = []
         panel_body_tag = panel_tag.find(class_="panel-body")
         for job_tag in JobTagIterator(panel_body_tag):
-            jobs.append(JobTagParser(job_tag).get_dict())
+            job_d = JobTagParser(job_tag).get_dict()
+            jobs.append(job_d["code"])
 
         return jobs
 
@@ -549,9 +550,11 @@ class JobParser:
         return to_json(self.job)
 
     def save_json(self):
-        filename = "{}.json".format(self.job["id"])
+        filename = "{}.json".format(self.job["code"])
         filepath = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
         to_json_file(self.get_dict(), filepath)
+        file_size = os.path.getsize(filepath)
+        print("Saved file {} [{} bytes]".format(filepath, file_size))
 
 
 class JobTagParser:
@@ -597,7 +600,7 @@ class JobTagParser:
         return json.dumps(self.job, sort_keys=True, indent=2, ensure_ascii=False)
 
     def save_json(self):
-        filename = "{}/jobs/{}.json".format(app.instance_path, self.job["id"])
+        filename = "{}/jobs/{}.json".format(app.instance_path, self.job["code"])
         to_json_file(self.job, filename)
 
 
