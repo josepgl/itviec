@@ -229,8 +229,8 @@ class EmployerParser:
             recommend_tag = ratings_panel.find("td", "chart")
             emp["review_recommend"] = int(recommend_tag["data-rate"])
         except (AttributeError, IndexError):
-            # print("Ratings panel is missing")
-            pass
+            if app.config["DEBUG"] is True:
+                print("Ratings panel is missing")
 
         return emp
 
