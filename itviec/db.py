@@ -12,9 +12,9 @@ class Database():
         if uri is not None:
             self.set_engine(uri)
 
-    def set_uri(self, uri):
+    def set_uri(self, uri, echo=False):
         print("Using database engine: {}".format(uri))
-        self.engine = create_engine(uri)
+        self.engine = create_engine(uri, echo=echo)
         session = self.get_session()
         self.base.query = session.query_property()
 
@@ -29,13 +29,18 @@ class Database():
 
     def init_app(self, app):
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
-        self.set_uri(uri)
+
+        # Call set_uri with configuration from app if available
+        if "SQLALCHEMY_ECHO" in app.config:
+            self.set_uri(uri, app.config["SQLALCHEMY_ECHO"])
+        else:
+            self.set_uri(uri)
 
         @app.teardown_appcontext
         def close_session(exception=None):
             db.session.remove()
 
-        if uri is 'sqlite://':
+        if uri == 'sqlite://':
             self.init_db()
 
     def init_db(self):

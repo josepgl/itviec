@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template
 
 from itviec.db import db
-from itviec.models import Job, Tag, JobTag, Address
+from itviec.models import Job, Tag, Address
 
 bp = Blueprint('itviec', __name__, cli_group=None)
 
@@ -52,16 +52,17 @@ def other_jobs():
 
 @bp.route("/tags")
 def tags():
-    from sqlalchemy import func, desc
-
-    query = db.session.query(Tag.name, func.count(JobTag.job_id).label('count'))
-    query = query.join(JobTag).group_by(Tag.name).order_by(desc("count"))
-    jobs = Job.query.count()
+    tags = db.session.query(Tag).all()
+    jobs_count = Job.query.count()
 
     result = []
-    for (tag, count) in query:
-        perc = (count / jobs) * 100
-        result.append((tag, count, round(perc, 2)))
+    for tag in tags:
+        count = len(tag.jobs.all())
+        if not count:
+            continue
+        perc = (count / jobs_count) * 100
+        result.append((tag.name, count, round(perc, 2)))
+    result.sort(key=lambda j: j[1], reverse=True)
 
     return render_template("tags.html", tags=result)
 
@@ -75,7 +76,6 @@ def locations():
             print(loc.name)
         else:
             locs.append(loc.name)
-    # query = query.join(job_address).join(Job).group_by(Address.name).order_by(desc("count"))
 
     return render_template("locations.html", locations=locs)
 

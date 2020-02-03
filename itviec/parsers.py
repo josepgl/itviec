@@ -6,7 +6,8 @@ from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
 
 from itviec.feeds import ReviewsFeed
-from itviec.helpers import fetch_url
+from itviec.helpers import fetch_url, to_json_file, to_json
+from itviec.feeds import JobTagIterator
 
 
 def is_last_updated(tag):
@@ -24,15 +25,19 @@ class EmployerParser:
     def __init__(self, code):
         self.code = code
         self.emp = None
-        self.reviews = None
+        self.reviews = []
 
     def get_url(self):
         return app.config["TEMPLATE_EMPLOYER_URL"].format(self.code)
 
+    def run(self):
+        self.fetch_and_parse()
+        self.fetch_and_parse_reviews()
+
     def fetch_and_parse(self):
         url = self.get_url()
 
-        print("Fetching url: {}".format(url))
+        # print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
         if response.text.find('employers_show') is -1:
@@ -53,7 +58,8 @@ class EmployerParser:
         feed = ReviewsFeed(self.code)
         for review_tag in feed.reviews():
             try:
-                self.reviews.append(ReviewParser(review_tag))
+                rev_p = ReviewParser(review_tag)
+                self.reviews.append(rev_p.get_dict())
             except KeyError:
                 print(review_tag)
                 raise
@@ -80,7 +86,7 @@ class EmployerParser:
             'code': self.code,
             "jobs": [],
             "why": {},
-            "locations": [],
+            "addresses": [],
             "our_people": None
         }
 
@@ -101,7 +107,7 @@ class EmployerParser:
         # Container Left Columnn #
         # ###################### #
         left_column = company_tag.find(class_="col-md-8 col-left")
-        emp["last_updated"] = self._parse_last_update(company_tag)
+        emp["last_update"] = self._parse_last_update(company_tag)
 
         # Navigation
         nav = left_column.find("ul", class_="navigation")
@@ -135,7 +141,7 @@ class EmployerParser:
 
             # Locations panel
             if panel_header_text.startswith("Location"):
-                emp["locations"] = self._parse_location_panel(panel_tag)
+                emp["addresses"] = self._parse_location_panel(panel_tag)
 
         return emp
 
@@ -223,7 +229,8 @@ class EmployerParser:
             recommend_tag = ratings_panel.find("td", "chart")
             emp["review_recommend"] = int(recommend_tag["data-rate"])
         except (AttributeError, IndexError):
-            print("Ratings panel is missing")
+            if app.config["DEBUG"] is True:
+                print("Ratings panel is missing")
 
         return emp
 
@@ -238,7 +245,8 @@ class EmployerParser:
         jobs = []
         panel_body_tag = panel_tag.find(class_="panel-body")
         for job_tag in JobTagIterator(panel_body_tag):
-            jobs.append(JobTagParser(job_tag).get_dict())
+            job_d = JobTagParser(job_tag).get_dict()
+            jobs.append(job_d["code"])
 
         return jobs
 
@@ -296,22 +304,18 @@ class EmployerParser:
         return locations
 
     def get_dict(self):
-        return self.emp
-
-    def get_full_dict(self):
         temp = {}
         temp.update(self.emp)
         temp["reviews"] = self.reviews
         return temp
 
     def get_json(self):
-        return json.dumps(self.emp, sort_keys=True, indent=2)
+        return to_json(self.emp)
 
     def save_json(self):
         filename = "{}.json".format(self.emp["code"])
         filepath = os.path.join(app.config["EMPLOYERS_CACHE_DIR"], filename)
-        with open(filepath, 'w') as json_file:
-            json.dump(self.emp, json_file, sort_keys=True, indent=2)
+        to_json_file(self.get_dict(), filepath)
 
 
 class ReviewParser:
@@ -385,6 +389,9 @@ class ReviewParser:
 
             self.review["hated"] = hated_paragraph
 
+    def get_dict(self):
+        return self.review
+
     def employer_reviews_parser(self, html):
         soup = BeautifulSoup(html, "html.parser")
 
@@ -439,10 +446,13 @@ class JobParser:
     def get_url(self):
         return "/".join((app.config["JOBS_URL"], self.code))
 
+    def run(self):
+        self.fetch_and_parse()
+
     def fetch_and_parse(self):
         url = self.get_url()
 
-        print("Fetching url: {}".format(url))
+        # print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
         if response.text.find('jobs_show') is -1:
@@ -462,14 +472,12 @@ class JobParser:
                 - div: skills_experience
                 - div: love_working_here
         '''
-        job = {
-            "id": self.code[self.code.rfind("-") + 1:],
-            "code": self.code,
-            # "reasons": None,
-            # "description": None,
-            # "skills_experience": None,
-            # "why": None,
-        }
+        job = {"code": self.code}
+        job["id"] = self.code[self.code.rfind("-") + 1:]
+
+        # exception
+        j_id = self.job["id"]
+        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
 
         soup = BeautifulSoup(html, "html.parser")
         div_content = soup.find("div", class_="content")
@@ -493,21 +501,11 @@ class JobParser:
         tag_list = header.find("div", class_="tag-list")
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
-
-        reasons = job_detail.find("div", class_="job_reason_to_join_us")
-        job["reasons"] = str(reasons)
-
-        description = job_detail.find("div", class_="job_description")
-        job["description"] = str(description)
-
-        skills_experience = job_detail.find("div", class_="skills_experience")
-        job["skills_experience"] = str(skills_experience)
-
-        why = job_detail.find("div", class_="love_working_here")
-        job["why"] = str(why)
-
-        job["locations"] = self._get_locations(job_detail)
-
+        job["reasons"] = str(job_detail.find("div", class_="job_reason_to_join_us"))
+        job["description"] = str(job_detail.find("div", class_="job_description"))
+        job["skills_experience"] = str(job_detail.find("div", class_="skills_experience"))
+        job["why"] = str(job_detail.find("div", class_="love_working_here"))
+        job["addresses"] = self._get_locations(job_detail)
         return job
 
     def _get_locations(self, job_detail_tag):
@@ -535,13 +533,14 @@ class JobParser:
         return self.job
 
     def get_json(self):
-        return json.dumps(self.job, sort_keys=True, indent=2)
+        return to_json(self.job)
 
     def save_json(self):
-        filename = "{}.json".format(self.job["id"])
+        filename = "{}.json".format(self.job["code"])
         filepath = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
-        with open(filepath, 'w') as json_file:
-            json.dump(self.job, json_file, sort_keys=True, indent=2)
+        to_json_file(self.get_dict(), filepath)
+        file_size = os.path.getsize(filepath)
+        print("Saved file {} [{} bytes]".format(filepath, file_size))
 
 
 class JobTagParser:
@@ -549,25 +548,26 @@ class JobTagParser:
         self.tag = job_tag
 
         self.job = {}
-        self.job["id"] = job_tag["id"][4:]
-        self.job["last_update"] = (
-            job_tag.find_next(string=lambda text: isinstance(text, Comment))
-            .extract()
-            .split('"')[1]
-        )
+        comment = job_tag.find_next(string=lambda text: isinstance(text, Comment))
+        self.job["last_update"] = (comment.extract().split('"')[1])
         self.job["title"] = job_tag.find_all("a")[1].text.strip()
-        self.job["employer_code"] = job_tag.find_all("a", {"target": "_blank"})[0]["href"].split("/")[-1]
+        self.job["employer_code"] = job_tag.find("a", {"target": "_blank"})["href"].split("/")[-1]
         self.job["url"] = job_tag.find("div", class_="details").a["href"]
         self.job["code"] = self.job["url"].split("/")[-1]
-        self.job["salary"] = job_tag.find_all("span", class_="salary-text")[0].text.strip()
+        self.job["id"] = self.job["code"][self.job["code"].rfind("-") + 1:]
+        # ugly exception
+        j_id = self.job["id"]
+        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
+
+        self.job["salary"] = job_tag.find("span", class_="salary-text").text.strip()
         self.job["address"] = (
-            job_tag.find_all("div", class_="address")[0].text.strip().split("\n\n\n")
+            job_tag.find("div", class_="address").text.strip().split("\n\n\n")
         )
         self.job["tags"] = (
-            job_tag.find_all("div", class_="tag-list")[0].text.strip().split("\n\n\n")
+            job_tag.find("div", class_="tag-list").text.strip().split("\n\n\n")
         )
-        self.job["description"] = job_tag.find_all("div", class_="description")[0].text.strip()
-        self.job["posted_tag"] = job_tag.find_all("span", class_="distance-time")[0].text.strip()
+        self.job["description"] = job_tag.find("div", class_="description").text.strip()
+        self.job["posted_tag"] = job_tag.find("span", class_="distance-time").text.strip()
         self.job["posted_on"] = get_post_date(self.job["posted_tag"])
 
     def __repr__(self):
@@ -577,12 +577,11 @@ class JobTagParser:
         return self.job
 
     def get_json(self):
-        return json.dumps(self.job, sort_keys=True, indent=2)
+        return json.dumps(self.job, sort_keys=True, indent=2, ensure_ascii=False)
 
     def save_json(self):
-        filename = "{}/jobs/{}.json".format(app.instance_path, self.job["id"])
-        with open(filename, 'w') as json_file:
-            json.dump(self.job, json_file, sort_keys=True, indent=2)
+        filename = "{}/jobs/{}.json".format(app.instance_path, self.job["code"])
+        to_json_file(self.job, filename)
 
 
 def get_post_date(post_date):

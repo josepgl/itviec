@@ -89,7 +89,7 @@ def init_app(app, profile=None, test_config=None):
         try:
             print("Loading instance configuration.")
             app.config.from_pyfile("config.py")
-        except FileNotFoundError as error:
+        except OSError as error:
             print("Custom config.py file missing in instance folder: {}".format(error))
 
     req_http_headers = collect_http_headers(app.config)

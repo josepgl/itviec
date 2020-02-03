@@ -1,4 +1,5 @@
 import requests
+import json
 
 import config
 
@@ -43,3 +44,13 @@ def fetch_url(url, headers=config.req_http_headers):
         raise StopIteration(error_msg.format(response.status_code, url))
 
     return response
+
+
+def to_json(to_json, indent=2):
+    return json.dumps(to_json, sort_keys=True, indent=indent, ensure_ascii=False)
+
+
+def to_json_file(to_json, filename):
+    with open(filename, 'wb') as json_file:
+        s = json.dumps(to_json, sort_keys=True, indent=2, ensure_ascii=False)
+        json_file.write(s.encode('utf8'))
