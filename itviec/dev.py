@@ -24,7 +24,6 @@ class CustomJSONEncoder(JSONEncoder):
             raise
         else:
             return list(iterable)
-        return JSONEncoder.default(self, o)
 
 
 bp = Blueprint('dev', __name__, url_prefix='/')
