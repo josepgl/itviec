@@ -476,10 +476,8 @@ class JobParser:
         job["id"] = self.code[self.code.rfind("-") + 1:]
 
         # exception
-        if job["id"] == 'b9dfc7e339de':
-            job["id"] = 245
-        else:
-            job["id"] = int(job["id"])
+        j_id = self.job["id"]
+        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
 
         soup = BeautifulSoup(html, "html.parser")
         div_content = soup.find("div", class_="content")
@@ -550,21 +548,16 @@ class JobTagParser:
         self.tag = job_tag
 
         self.job = {}
-        self.job["last_update"] = (
-            job_tag.find_next(string=lambda text: isinstance(text, Comment))
-            .extract()
-            .split('"')[1]
-        )
+        comment = job_tag.find_next(string=lambda text: isinstance(text, Comment))
+        self.job["last_update"] = (comment.extract().split('"')[1])
         self.job["title"] = job_tag.find_all("a")[1].text.strip()
         self.job["employer_code"] = job_tag.find("a", {"target": "_blank"})["href"].split("/")[-1]
         self.job["url"] = job_tag.find("div", class_="details").a["href"]
         self.job["code"] = self.job["url"].split("/")[-1]
         self.job["id"] = self.job["code"][self.job["code"].rfind("-") + 1:]
-        # exception
-        if self.job["id"] == 'b9dfc7e339de':
-            self.job["id"] = 245
-        else:
-            self.job["id"] = int(self.job["id"])
+        # ugly exception
+        j_id = self.job["id"]
+        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
 
         self.job["salary"] = job_tag.find("span", class_="salary-text").text.strip()
         self.job["address"] = (
