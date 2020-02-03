@@ -9,8 +9,6 @@ from itviec.feeds import ReviewsFeed
 from itviec.helpers import fetch_url, to_json_file, to_json
 from itviec.feeds import JobTagIterator
 
-from pprint import pprint
-
 
 def is_last_updated(tag):
     return tag.__class__.__name__ is 'Comment' \
@@ -505,14 +503,10 @@ class JobParser:
         tag_list = header.find("div", class_="tag-list")
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
-        reasons = job_detail.find("div", class_="job_reason_to_join_us")
-        job["reasons"] = str(reasons)
-        description = job_detail.find("div", class_="job_description")
-        job["description"] = str(description)
-        skills_experience = job_detail.find("div", class_="skills_experience")
-        job["skills_experience"] = str(skills_experience)
-        why = job_detail.find("div", class_="love_working_here")
-        job["why"] = str(why)
+        job["reasons"] = str(job_detail.find("div", class_="job_reason_to_join_us"))
+        job["description"] = str(job_detail.find("div", class_="job_description"))
+        job["skills_experience"] = str(job_detail.find("div", class_="skills_experience"))
+        job["why"] = str(job_detail.find("div", class_="love_working_here"))
         job["addresses"] = self._get_locations(job_detail)
         return job
 
