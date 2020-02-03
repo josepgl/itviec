@@ -128,23 +128,35 @@ def download(type):
         exit(1)
 
     if do_jobs:
-        batch_download("job", source.get_job_codes, cache.fetch_job)
+        batch_download("job")
 
     if do_employers:
-        batch_download("employer", source.get_employers_with_jobs, cache.fetch_employer)
+        batch_download("employer")
 
 
-def batch_download(name, collection_func, fetch_func):
-    codes = collection_func()
+def batch_download(name):
+    batches = {
+        "job": {
+            "collection_func": source.get_job_codes,
+            "fetch_func": cache.fetch_job,
+        },
+        "employer": {
+            "collection_func": source.get_employers_with_jobs,
+            "fetch_func": cache.fetch_employer,
+        },
+    }
+
+    if name not in batches:
+        raise KeyError("Download batch not found.")
+
+    codes = batches[name]["collection_func"]()
     total = len(codes)
     count = 0
     for code in codes:
         count += 1
         print("Fetching {} {}/{}: {}".format(name, count, total, code))
-        fetch_func(code)
-        time.sleep(1)
-        if count > 5:
-            break
+        batches[name]["fetch_func"](code)
+        time.sleep(0.7)
 
 
 @cmd_bp.cli.command('load')
