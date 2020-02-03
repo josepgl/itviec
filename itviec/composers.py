@@ -2,7 +2,6 @@ from itviec import cache
 from itviec.db import db
 from itviec.helpers import to_json
 from itviec.models import Employer, Job, Tag, Address, Review
-from pprint import pprint
 
 
 def compose_employer(employer_dict):
