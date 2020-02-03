@@ -10,21 +10,21 @@ class CustomJSONEncoder(JSONEncoder):
     This class allows encoding flask configuration to JSON.
     '''
 
-    def default(self, obj):
+    def default(self, o):  # pylint: disable=E0202
         try:
-            if isinstance(obj, datetime):
-                return obj.isoformat()
-            elif isinstance(obj, date):
-                return obj.isoformat()
-            elif isinstance(obj, timedelta):
-                return str(obj)
-            iterable = iter(obj)
+            if isinstance(o, datetime):
+                return o.isoformat()
+            elif isinstance(o, date):
+                return o.isoformat()
+            elif isinstance(o, timedelta):
+                return str(o)
+            iterable = iter(o)
         except TypeError as e:
             print("TypeError found: {}".format(e))
             raise
         else:
             return list(iterable)
-        return JSONEncoder.default(self, obj)
+        return JSONEncoder.default(self, o)
 
 
 bp = Blueprint('dev', __name__, url_prefix='/')
