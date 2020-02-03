@@ -76,7 +76,6 @@ def locations():
             print(loc.name)
         else:
             locs.append(loc.name)
-    # query = query.join(job_address).join(Job).group_by(Address.name).order_by(desc("count"))
 
     return render_template("locations.html", locations=locs)
 

@@ -550,7 +550,6 @@ class JobTagParser:
         self.tag = job_tag
 
         self.job = {}
-        # self.job["id"] = job_tag["id"][4:]
         self.job["last_update"] = (
             job_tag.find_next(string=lambda text: isinstance(text, Comment))
             .extract()
