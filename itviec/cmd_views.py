@@ -170,3 +170,19 @@ def load():
 
         db.session.add(employer)
         db.session.commit()
+
+
+@cmd_bp.cli.command('install')
+@click.argument('employer_code')
+def install(employer_code):
+    print("Installing employer '{}'...".format(employer_code))
+    cache.fetch_employer(employer_code)
+    emp_d = cache.get_employer(employer_code)
+
+    # pprint(emp_d)
+
+    for job_code in emp_d["jobs"]:
+        cache.fetch_job(job_code)
+
+    employer = compose_employer(emp_d)
+    pprint(employer.__dict__)
