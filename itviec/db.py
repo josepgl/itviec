@@ -31,7 +31,7 @@ class Database():
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
 
         # Call set_uri with configuration from app if available
-        if app.config["SQLALCHEMY_ECHO"]:
+        if "SQLALCHEMY_ECHO" in app.config:
             self.set_uri(uri, app.config["SQLALCHEMY_ECHO"])
         else:
             self.set_uri(uri)
