@@ -8,9 +8,9 @@ from flask import current_app as app
 
 from itviec import source
 from itviec import cache
-from itviec.helpers import to_json
 from itviec.db import db
-from itviec.models import Job, Employer, Tag, Address, Review
+from itviec.composers import compose_employer
+
 
 # for debugging
 from pprint import pprint
@@ -128,29 +128,23 @@ def download(type):
         exit(1)
 
     if do_jobs:
-        job_codes = source.get_job_codes()
-        job_total = len(job_codes)
-        job_count = 0
-        for job_code in job_codes:
-            job_count += 1
-            print("Fetching job {}/{}: {}".format(job_count, job_total, job_code))
-            cache.fetch_job(job_code)
-            time.sleep(1)
+        batch_download("job", source.get_job_codes, cache.fetch_job)
 
     if do_employers:
-        employer_codes = source.get_employers_with_jobs()
-        emp_total = len(employer_codes)
-        emp_count = 0
-        for employer_code in employer_codes:
-            emp_count += 1
-            print("Fetching employer {}/{}: {}".format(emp_count, emp_total, employer_code))
-            cache.fetch_employer(employer_code)
-            time.sleep(1)
+        batch_download("employer", source.get_employers_with_jobs, cache.fetch_employer)
 
-    if do_jobs:
-        print("{} jobs".format(job_total))
-    if do_employers:
-        print("{} employers".format(emp_total))
+
+def batch_download(name, collection_func, fetch_func):
+    codes = collection_func()
+    total = len(codes)
+    count = 0
+    for code in codes:
+        count += 1
+        print("Fetching {} {}/{}: {}".format(name, count, total, code))
+        fetch_func(code)
+        time.sleep(1)
+        if count > 5:
+            break
 
 
 @cmd_bp.cli.command('load')
@@ -160,92 +154,7 @@ def load():
         print("# Employer: {}".format(emp_code))
 
         emp_d = cache.get_employer(emp_code)
-        compose_employer_reviews(emp_d)
-        jobtags_to_jobcodes(emp_d)
-        jobcodes_to_jobs(emp_d)
-        str_to_address(emp_d)
-        str_to_tag(emp_d)
-        emp_d["why"] = to_json(emp_d["why"], indent=None)
+        employer = compose_employer(emp_d)
 
-        emp = Employer(**emp_d)
-        db.session.add(emp)
+        db.session.add(employer)
         db.session.commit()
-
-
-def compose_employer_reviews(employer):
-    reviews = []
-    for rev_d in employer["reviews"]:
-        rev_d["employer_code"] = employer["code"]
-        review = Review(**rev_d)
-        reviews.append(review)
-        db.session.add(review)
-    employer["reviews"] = reviews
-
-
-def jobcodes_to_jobs(employer):
-    jobs = []
-    for job_code in employer["jobs"]:
-        print("    \\- Job: {}".format(job_code))
-        job = db.session.query(Job).filter_by(code=job_code).first()
-        if job:
-            print("<*> FOUND Job in database by CODE '{}': {}".format(job_code, job))
-
-        if job is None:
-            job_d = cache.get_job(job_code)
-            job_id = int(job_d["id"])
-            job = db.session.query(Job).filter_by(id=job_id).first()
-            if job:
-                print("<*> FOUND Job in database by ID '{}': {}".format(job_id, job))
-
-        if job is None:
-            str_to_tag(job_d)
-            str_to_address(job_d)
-
-            job = Job(**job_d)
-            db.session.add(job)
-
-        jobs.append(job)
-        db.session.commit()
-
-    employer["jobs"] = jobs
-
-
-def str_to_tag(item):
-    tag_list = []
-    for tag_name in item["tags"]:
-        tag = db.session.query(Tag).filter_by(name=tag_name).first()
-        if tag is None:
-            tag = Tag(name=tag_name)
-            db.session.add(tag)
-        tag_list.append(tag)
-    item["tags"] = tag_list
-
-
-def str_to_address(item):
-    addr_list = []
-    for full_addr in item["addresses"]:
-        if full_addr == '':
-            continue
-        addr = db.session.query(Address).filter_by(full_address=full_addr).first()
-        if addr is None:
-            try:
-                addr_list = full_addr.split(", ")[-2:]
-                city = addr_list.pop()
-                if len(addr_list):
-                    district = addr_list.pop()
-                    addr = Address(full_address=full_addr, city=city, district=district)
-                else:
-                    addr = Address(full_address=full_addr, city=city)
-            except ValueError:
-                print("Address: '{}'".format(full_addr))
-                raise
-            db.session.add(addr)
-        addr_list.append(addr)
-    item["addresses"] = addr_list
-
-
-def jobtags_to_jobcodes(employer):
-    job_codes = []
-    for jt in employer["jobs"]:
-        job_codes.append(jt["code"])
-    employer["jobs"] = job_codes
