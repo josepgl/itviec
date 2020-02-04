@@ -9,6 +9,7 @@ from flask import current_app as app
 from itviec import source
 from itviec import cache
 from itviec.db import db
+from itviec.models import Job, Employer
 from itviec.composers import compose_employer
 
 
@@ -110,16 +111,16 @@ def emps_per_job_count(emps):
 
 
 @cmd_bp.cli.command('download')
-@click.argument('selected_type', default="all")
-def download(selected_type):
+@click.argument('select_type', default="all")
+def download(select_type):
     '''Store jobs and employers related to update in json files'''
-    if selected_type == "all":
+    if select_type == "all":
         do_jobs = True
         do_employers = True
-    elif selected_type == "jobs":
+    elif select_type == "jobs":
         do_jobs = True
         do_employers = False
-    elif selected_type == "employers":
+    elif select_type == "employers":
         do_jobs = False
         do_employers = True
     else:
@@ -186,3 +187,32 @@ def install(employer_code):
 
     employer = compose_employer(emp_d)
     pprint(employer.__dict__)
+
+
+@cmd_bp.cli.command('show')
+@click.argument('select_type')
+@click.argument('code')
+def show(select_type, code):
+    if select_type == "job":
+        show_job(code)
+    elif select_type == "employer" or select_type == "emp":
+        show_employer(code)
+    else:
+        print("Type not supported. Valid types are 'job' or 'employer'.")
+        exit(1)
+
+
+def show_job(code):
+    job = Job.query.filter(Job.code == code).first()
+    pprint(job.__dict__)
+
+
+def show_employer(code):
+    employer = Employer.query.filter(Employer.code == code).first()
+    pprint(employer.__dict__)
+
+
+@cmd_bp.cli.command('feed')
+def feed():
+    for code in source.get_job_codes()[:20]:
+        print(code)
