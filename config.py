@@ -23,6 +23,7 @@ class Config:
     EMPLOYERS_CACHE_DIR = os.path.join(CACHE_DIR, "employers")
 
     CONFIG_FILENAME = "config.py"
+    DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     # ItViec urls
     BASE_URL = "https://itviec.com"
