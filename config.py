@@ -50,6 +50,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or \
         'sqlite:///' + os.path.join(basedir, "instance", "sqlalchemy.sqlite")
     SQLALCHEMY_ECHO = True
+    VERBOSE = True
 
 
 class TestingConfig(Config):
