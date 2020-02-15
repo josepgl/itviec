@@ -6,7 +6,7 @@ from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
 
 from itviec.feeds import ReviewsFeed
-from itviec.helpers import fetch_url, to_json_file, to_json
+from itviec.helpers import fetch_url, to_json_file, to_json, str_to_datetime
 from itviec.feeds import JobTagIterator
 
 
@@ -24,8 +24,7 @@ class EmployerParser:
 
     def __init__(self, code):
         self.code = code
-        self.emp = None
-        self.reviews = []
+        self.emp = {"reviews": []}
 
     def get_url(self):
         return app.config["TEMPLATE_EMPLOYER_URL"].format(self.code)
@@ -36,14 +35,12 @@ class EmployerParser:
 
     def fetch_and_parse(self):
         url = self.get_url()
-
-        # print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
         if response.text.find('employers_show') is -1:
             raise KeyError("Employer '{}' not found at {}".format(self.code, url))
 
-        self.emp = self.parse_employer_page(response.text)
+        self.emp.update(self.parse_employer_page(response.text))
 
     def digest(self):
         self.emp["overview"] = "<overview len={}>".format(len(self.emp["overview"]))
@@ -54,12 +51,11 @@ class EmployerParser:
         self.emp["jobs"] = jobs
 
     def fetch_and_parse_reviews(self):
-        self.reviews = []
         feed = ReviewsFeed(self.code)
         for review_tag in feed.reviews():
             try:
                 rev_p = ReviewParser(review_tag)
-                self.reviews.append(rev_p.get_dict())
+                self.emp["reviews"].append(rev_p.get_dict())
             except KeyError:
                 print(review_tag)
                 raise
@@ -143,7 +139,14 @@ class EmployerParser:
             if panel_header_text.startswith("Location"):
                 emp["addresses"] = self._parse_location_panel(panel_tag)
 
+        emp["last_post"] = self._get_last_post(emp)
+
         return emp
+
+    def _get_last_post(self, emp):
+        if not len(emp["jobs"]):
+            return emp["last_update"]
+        return max([jt["last_post"] for jt in emp["jobs"]])
 
     def _parse_last_update(self, company_tag):
         left_column = company_tag.find(class_="col-md-8 col-left")
@@ -229,7 +232,7 @@ class EmployerParser:
             recommend_tag = ratings_panel.find("td", "chart")
             emp["review_recommend"] = int(recommend_tag["data-rate"])
         except (AttributeError, IndexError):
-            if app.config["DEBUG"] is True:
+            if "VERBOSE" in app.config and app.config["VERBOSE"]:
                 print("Ratings panel is missing")
 
         return emp
@@ -246,7 +249,7 @@ class EmployerParser:
         panel_body_tag = panel_tag.find(class_="panel-body")
         for job_tag in JobTagIterator(panel_body_tag):
             job_d = JobTagParser(job_tag).get_dict()
-            jobs.append(job_d["code"])
+            jobs.append(job_d)
 
         return jobs
 
@@ -304,10 +307,7 @@ class EmployerParser:
         return locations
 
     def get_dict(self):
-        temp = {}
-        temp.update(self.emp)
-        temp["reviews"] = self.reviews
-        return temp
+        return self.emp
 
     def get_json(self):
         return to_json(self.emp)
@@ -451,8 +451,6 @@ class JobParser:
 
     def fetch_and_parse(self):
         url = self.get_url()
-
-        # print("Fetching url: {}".format(url))
         response = fetch_url(url)
 
         if response.text.find('jobs_show') is -1:
@@ -473,11 +471,6 @@ class JobParser:
                 - div: love_working_here
         '''
         job = {"code": self.code}
-        job["id"] = self.code[self.code.rfind("-") + 1:]
-
-        # exception
-        j_id = self.job["id"]
-        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
 
         soup = BeautifulSoup(html, "html.parser")
         div_content = soup.find("div", class_="content")
@@ -488,8 +481,8 @@ class JobParser:
 
         job_detail = div_content.find("div", class_="job-detail")
         last_upd = div_content.contents[1].string
-        job["last_update"] = last_upd[last_upd.find('"') + 1:-1]
-
+        _ = last_upd[last_upd.find('"') + 1:-1]
+        job["last_update"] = _[:_.rfind(' ')]
         # Header
         # - job_info
         #   - h1: job_title
@@ -501,11 +494,14 @@ class JobParser:
         tag_list = header.find("div", class_="tag-list")
         job["tags"] = [tag.string.strip() for tag in tag_list.find_all("span")]
         job["salary"] = header.find("span", class_="salary-text").string.strip()
+        job["distance"] = header.find("div", class_="distance-time-job-posted").contents[-1].strip()
         job["reasons"] = str(job_detail.find("div", class_="job_reason_to_join_us"))
         job["description"] = str(job_detail.find("div", class_="job_description"))
         job["skills_experience"] = str(job_detail.find("div", class_="skills_experience"))
         job["why"] = str(job_detail.find("div", class_="love_working_here"))
         job["addresses"] = self._get_locations(job_detail)
+        job["last_post"] = get_post_date(job["last_update"], job["distance"])
+
         return job
 
     def _get_locations(self, job_detail_tag):
@@ -540,7 +536,7 @@ class JobParser:
         filepath = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
         to_json_file(self.get_dict(), filepath)
         file_size = os.path.getsize(filepath)
-        print("Saved file {} [{} bytes]".format(filepath, file_size))
+        print("Saved file {} [{} bytes]".format(filename, file_size))
 
 
 class JobTagParser:
@@ -549,16 +545,12 @@ class JobTagParser:
 
         self.job = {}
         comment = job_tag.find_next(string=lambda text: isinstance(text, Comment))
-        self.job["last_update"] = (comment.extract().split('"')[1])
+        _last_update = comment.extract().split('"')[1]
+        self.job["last_update"] = _last_update[:_last_update.rfind(" ")]
         self.job["title"] = job_tag.find_all("a")[1].text.strip()
         self.job["employer_code"] = job_tag.find("a", {"target": "_blank"})["href"].split("/")[-1]
-        self.job["url"] = job_tag.find("div", class_="details").a["href"]
-        self.job["code"] = self.job["url"].split("/")[-1]
-        self.job["id"] = self.job["code"][self.job["code"].rfind("-") + 1:]
-        # ugly exception
-        j_id = self.job["id"]
-        self.job["id"] = 245 if j_id == 'b9dfc7e339de' else int(j_id)
-
+        _url = job_tag.find("div", class_="details").a["href"]
+        self.job["code"] = _url.split("/")[-1]
         self.job["salary"] = job_tag.find("span", class_="salary-text").text.strip()
         self.job["address"] = (
             job_tag.find("div", class_="address").text.strip().split("\n\n\n")
@@ -567,11 +559,12 @@ class JobTagParser:
             job_tag.find("div", class_="tag-list").text.strip().split("\n\n\n")
         )
         self.job["description"] = job_tag.find("div", class_="description").text.strip()
-        self.job["posted_tag"] = job_tag.find("span", class_="distance-time").text.strip()
-        self.job["posted_on"] = get_post_date(self.job["posted_tag"])
+        _posted_tag = job_tag.find("span", class_="distance-time").text.strip()
+        self.job["distance"] = _posted_tag
+        self.job["last_post"] = get_post_date(self.job["last_update"], _posted_tag)
 
     def __repr__(self):
-        return "<JobTagParser id:{} title:{}>".format(self.job["id"], self.job["title"])
+        return "<JobTagParser {}>".format(self.job["code"])
 
     def get_dict(self):
         return self.job
@@ -584,12 +577,22 @@ class JobTagParser:
         to_json_file(self.job, filename)
 
 
-def get_post_date(post_date):
-    (count, unit, _) = post_date.split(" ")
+def get_post_date(last_update, distance):
+    last_dt = str_to_datetime(last_update)
+    delta = get_time_distance_delta(distance)
+
+    post_dt = last_dt - delta
+
+    now = datetime.now()
+    assert now > post_dt
+    return post_dt.strftime(app.config["DATETIME_FORMAT"])
+
+
+def get_time_distance_delta(time_distance):
+    (count, unit, _) = time_distance.split(" ")
     if unit.startswith("minute"):
-        posted = datetime.now() - timedelta(minutes=int(count))
+        return timedelta(minutes=int(count))
     elif unit.startswith("hour"):
-        posted = datetime.now() - timedelta(hours=int(count))
+        return timedelta(hours=int(count))
     elif unit.startswith("day"):
-        posted = datetime.now() - timedelta(days=int(count))
-    return str(posted)
+        return timedelta(days=int(count))

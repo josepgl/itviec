@@ -1,16 +1,17 @@
 import os
-import time
-import json
+from datetime import datetime
 
 import click
 from flask import Blueprint
 from flask import current_app as app
 
-from itviec import source
-from itviec import cache
+import itviec.cache
+import itviec.stats
 from itviec.db import db
+from itviec import source
 from itviec.models import Job, Employer
-from itviec.composers import compose_employer
+from itviec.composers import compose_employer, install_employer
+from itviec.upgrade import download, upgrade
 
 
 # for debugging
@@ -20,7 +21,7 @@ cmd_bp = Blueprint('itviec_cmd', __name__, cli_group=None)
 
 
 @cmd_bp.cli.command('init')
-def init():
+def _init():
     directories = (
         app.instance_path,
         app.config["CACHE_DIR"],
@@ -38,136 +39,29 @@ def init():
 
 
 @cmd_bp.cli.command('update')
-def update():
+def _update():
     '''Download employer and job summary list'''
     source.fetch_all()
 
 
 @cmd_bp.cli.command('update-stats')
-def update_stats():
-    update_jobs_stats()
-
-
-def update_jobs_stats():
-    '''Show jobs stats'''
-    with open(app.config["JOBS_JSON_FILE"], 'r') as jobs_file:
-        jobs = json.load(jobs_file)
-
-    emps = {}
-    tags = {}
-    locs = {
-        "Ho Chi Minh": 0,
-        "Ha Noi": 0,
-        "Da Nang": 0,
-        "Others": 0,
-    }
-
-    for job in jobs:
-        add_job_to_employer(emps, job)
-        count_job_tags(tags, job)
-        count_job_locations(locs, job)
-
-    print("Found {} jobs on {} employers.".format(len(jobs), len(emps)))
-    print("Found {} tags.".format(len(tags)))
-    for loc in locs:
-        print("Found {} jobs in {}.".format(locs[loc], loc))
-
-    emp_with_jobs = emps_per_job_count(emps)
-    for count in sorted(emp_with_jobs):
-        print("Found {} employers with {} offers.".format(emp_with_jobs[count], count))
-
-
-def add_job_to_employer(emps, job):
-    emp = job["employer_code"]
-    if emp in emps:
-        emps[emp] += 1
-    else:
-        emps[emp] = 1
-
-
-def count_job_tags(tags, job):
-    for tag in job["tags"]:
-        if tag in tags:
-            tags[tag] += 1
-        else:
-            tags[tag] = 1
-
-
-def count_job_locations(locs, job):
-    for location in job["address"]:
-        if location in locs:
-            locs[location] += 1
-
-
-def emps_per_job_count(emps):
-    emp_with_jobs = {}
-    for emp in emps:
-        count = emps[emp]
-        if count in emp_with_jobs:
-            emp_with_jobs[count] += 1
-        else:
-            emp_with_jobs[count] = 1
-    return emp_with_jobs
+def _update_stats():
+    itviec.stats.update_jobs_stats()
+    # itviec.stats.to_be_updated()
 
 
 @cmd_bp.cli.command('download')
-@click.argument('select_type', default="all")
-def download(select_type):
-    '''Store jobs and employers related to update in json files'''
-    if select_type == "all":
-        do_jobs = True
-        do_employers = True
-    elif select_type == "jobs":
-        do_jobs = True
-        do_employers = False
-    elif select_type == "employers":
-        do_jobs = False
-        do_employers = True
-    else:
-        print("Error: Invalid download option.")
-        print("Download command accepts: all, jobs, employers. (all)")
-        exit(1)
-
-    if do_jobs:
-        batch_download("job")
-
-    if do_employers:
-        batch_download("employer")
-
-
-def batch_download(name):
-    batches = {
-        "job": {
-            "collection_func": source.get_job_codes,
-            "fetch_func": cache.fetch_job,
-        },
-        "employer": {
-            "collection_func": source.get_employers_with_jobs,
-            "fetch_func": cache.fetch_employer,
-        },
-    }
-
-    if name not in batches:
-        raise KeyError("Download batch not found.")
-
-    codes = batches[name]["collection_func"]()
-    total = len(codes)
-    count = 0
-    for code in codes:
-        count += 1
-        print("Fetching {} {}/{}: {}".format(name, count, total, code))
-        batches[name]["fetch_func"](code)
-        time.sleep(0.7)
+def _download():
+    download()
 
 
 @cmd_bp.cli.command('load')
-def load():
-    '''Will load employers from newest jobs to oldest'''
+def _load():
+    '''Load employers from newest jobs to oldest'''
     for emp_code in source.get_employers_with_jobs():
         print("# Employer: {}".format(emp_code))
 
-        emp_d = cache.get_employer(emp_code)
-        employer = compose_employer(emp_d)
+        employer = compose_employer(emp_code)
 
         db.session.add(employer)
         db.session.commit()
@@ -175,24 +69,15 @@ def load():
 
 @cmd_bp.cli.command('install')
 @click.argument('employer_code')
-def install(employer_code):
-    print("Installing employer '{}'...".format(employer_code))
-    cache.fetch_employer(employer_code)
-    emp_d = cache.get_employer(employer_code)
-
-    # pprint(emp_d)
-
-    for job_code in emp_d["jobs"]:
-        cache.fetch_job(job_code)
-
-    employer = compose_employer(emp_d)
-    pprint(employer.__dict__)
+def _install_employer(employer_code):
+    # also used internally
+    install_employer(employer_code)
 
 
 @cmd_bp.cli.command('show')
 @click.argument('select_type')
 @click.argument('code')
-def show(select_type, code):
+def _show(select_type, code):
     if select_type == "job":
         show_job(code)
     elif select_type == "employer" or select_type == "emp":
@@ -213,6 +98,73 @@ def show_employer(code):
 
 
 @cmd_bp.cli.command('feed')
-def feed():
-    for code in source.get_job_codes()[:20]:
-        print(code)
+@click.argument('page_size', default=20)
+def _feed(page_size):
+    count = 0
+    for jt in source.get_timed_job_tags():
+        if count % page_size == 0 and count != 0:
+            input("Press a key to show the next page.")
+        count += 1
+
+        now = datetime.now()
+        delta = now.date() - jt["last_post"].date()
+        if delta.days == 0:
+            print("#{} [{}] {}".format(count, "Today", jt["title"]))
+        else:
+            print("#{} [{} days ago] {}".format(count, delta.days, jt["title"]))
+
+
+def print_histogram(series, reverse=False):
+    '''series{label: count}'''
+    total = sum((series[k] for k in series))
+    for label in sorted(series, reverse=reverse):
+        percent = round(series[label] * 100 / total, 1)
+        print("{} [{}%] {}".format(label, percent, "#" * series[label]))
+
+
+def get_time_distance(time_distance):
+    time = {}
+    (count, unit, _) = time_distance.split(" ")
+    if unit.startswith("minute"):
+        time["minutes"] = int(count)
+    elif unit.startswith("hour"):
+        time["hours"] = int(count)
+    elif unit.startswith("day"):
+        time["days"] = int(count)
+    return time
+
+
+@cmd_bp.cli.command('histogram')
+def _histogram():
+    jpd = {}
+    for jt in source.get_timed_job_tags():
+        post_date = str(jt["last_post"].date())
+
+        jpd[post_date] = jpd[post_date] + 1 if post_date in jpd else 1
+        if post_date in jpd:
+            jpd[post_date] += 1
+        else:
+            jpd[post_date] = 1
+
+    print_histogram(jpd)
+
+
+@cmd_bp.cli.command('distance-histo')
+def _distance_histo():
+    days_ago = {0: 0}
+    for jt in source.get_timed_job_tags():
+        print(jt["distance"])
+        time = get_time_distance(jt["distance"])
+        if "days" in time:
+            count = time["days"]
+            days_ago[count] = days_ago[count] + 1 if count in days_ago else 1
+        else:
+            days_ago[0] += 1
+
+    print_histogram(days_ago, reverse=True)
+
+
+@cmd_bp.cli.command('upgrade')
+def _upgrade():
+    download()
+    upgrade()

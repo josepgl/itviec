@@ -4,9 +4,23 @@ from itviec.helpers import to_json
 from itviec.models import Employer, Job, Tag, Address, Review
 
 
-def compose_employer(employer_dict):
+def install_employer(employer_code):
+    print("Installing employer '{}'...".format(employer_code))
+    emp_d = cache.employer_cache_or_fetch(employer_code)
+
+    for job_tag in emp_d["jobs"]:
+        if not cache.is_job_cached(job_tag["code"]):
+            cache.fetch_job_with_stamp(job_tag["code"], job_tag["last_post"])
+
+    employer = compose_employer(employer_code)
+    db.session.add(employer)
+    db.session.commit()
+
+
+def compose_employer(employer_code):
+    employer_dict = cache.get_employer(employer_code)
     compose_employer_reviews(employer_dict)
-    jobcodes_to_jobs(employer_dict)
+    job_tags_to_jobs(employer_dict)
     str_to_address(employer_dict)
     str_to_tag(employer_dict)
     employer_dict["why"] = to_json(employer_dict["why"], indent=None)
@@ -25,36 +39,38 @@ def compose_employer_reviews(employer):
     employer["reviews"] = reviews
 
 
-def jobcodes_to_jobs(employer):
+def job_tags_to_jobs(employer):
     jobs = []
-    for job_code in employer["jobs"]:
-        print("    \\- Job: {}".format(job_code))
-        job = db.session.query(Job).filter_by(code=job_code).first()
-        if job:
-            print("<*> FOUND Job in database by CODE '{}': {}".format(job_code, job))
+    for job_tag in employer["jobs"]:
+        print("    \\- Job: {}".format(job_tag["code"]))
 
+        job = Job.query.filter(Job.code == job_tag["code"]).first()
         if job is None:
-            try:
-                job_d = cache.get_job(job_code)
-            except OSError:
-                cache.fetch_job(job_code)
-                job_d = cache.get_job(job_code)
-            job_id = int(job_d["id"])
-            job = db.session.query(Job).filter_by(id=job_id).first()
-            if job:
-                print("<*> FOUND Job in database by ID '{}': {}".format(job_id, job))
-
-        if job is None:
-            str_to_tag(job_d)
-            str_to_address(job_d)
-
-            job = Job(**job_d)
+            job = compose_job(job_tag)
             db.session.add(job)
 
         jobs.append(job)
         db.session.commit()
 
     employer["jobs"] = jobs
+
+
+def compose_job(job_tag):
+    try:
+        job_d = cache.get_job(job_tag["code"])
+    except OSError:
+        cache.fetch_job_with_stamp(job_tag["code"], job_tag["last_post"])
+        job_d = cache.get_job(job_tag["code"])
+
+    str_to_tag(job_d)
+    str_to_address(job_d)
+
+    if "distance" in job_d:
+        del job_d["distance"]
+
+    job = Job(**job_d)
+
+    return job
 
 
 def str_to_tag(item):

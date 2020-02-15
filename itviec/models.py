@@ -33,16 +33,19 @@ class Employer(db.base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     code = Column(String(128), nullable=False, unique=True)
+
     name = Column(String(128), nullable=False, unique=True)
     logo = Column(String(128), nullable=False)
     location = Column(String(128), nullable=False)
     industry = Column(String(128), nullable=False)
     employees = Column(String(128), nullable=False)
     country = Column(String(128), nullable=False)
-    last_update = Column(String(128), nullable=False)
     working_days = Column(String(128))
     overtime = Column(String(128))
     website = Column(String(128))
+
+    last_update = Column(String(32), nullable=False)
+    last_post = Column(String(32), nullable=False)
 
     review_count = Column(Integer)
     review_ratings = Column(Float)
@@ -61,7 +64,7 @@ class Employer(db.base):
                         secondary="employer_tag",
                         backref=backref("employers", lazy='dynamic'),
                         )
-    reviews = relationship('Review', backref='employer', lazy=True)
+    reviews = relationship('Review', backref='employer', lazy='dynamic')
 
     def __repr__(self):
         return '<Employer {}: {}>'.format(self.code, self.name)
@@ -73,28 +76,32 @@ class Employer(db.base):
 class Job(db.base):
     __tablename__ = 'job'
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    code = Column(String(256), nullable=False)
-    last_update = Column(String(128), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(256), unique=True, nullable=False)
+
     title = Column(String(128), nullable=False)
     salary = Column(String(128), nullable=False)
+    employer_code = Column(String(128), ForeignKey('employer.code'), nullable=False)
+
+    # Time registers
+    last_update = Column(String(128), nullable=False)
+    last_post = Column(String(128), nullable=False)
+
+    # Descriptive long texts
     description = Column(Text, nullable=False)
     skills_experience = Column(Text, nullable=False)
     reasons = Column(Text, nullable=False)
     why = Column(Text)
 
+    # Relationships
     addresses = relationship("Address",
                              secondary="job_address",
-                             backref="jobs",
-                             )
-
+                             backref=backref("jobs", lazy='dynamic'))
     tags = relationship("Tag",
                         secondary="job_tag",
-                        backref=backref("jobs", lazy='dynamic'),
-                        )
-
-    employer_code = Column(String(128), ForeignKey('employer.code'), nullable=False)
-    employer = relationship("Employer", backref=backref("jobs", order_by=id))
+                        backref=backref("jobs", lazy='dynamic'))
+    employer = relationship("Employer",
+                            backref=backref("jobs", lazy='dynamic'))
 
     def __repr__(self):
         return '<Job {}: {}>'.format(self.id, self.title)
@@ -147,7 +154,7 @@ class Address(db.base):
     __tablename__ = 'address'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    full_address = Column(String(128), unique=True, nullable=False)
+    full_address = Column(Text(), unique=True, nullable=False)
     country = Column(String(32))
     city = Column(String(32))
     district = Column(String(32))
