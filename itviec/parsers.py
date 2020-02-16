@@ -21,6 +21,12 @@ def get_last_updated(tag):
     return _[_.find('"') + 1:-1]
 
 
+def _get_employer_last_post(emp):
+    if not len(emp["jobs"]):
+        return emp["last_update"]
+    return max([jt["last_post"] for jt in emp["jobs"]])
+
+
 class EmployerParser:
 
     def __init__(self, code):
@@ -140,14 +146,9 @@ class EmployerParser:
             if panel_header_text.startswith("Location"):
                 emp["addresses"] = self._parse_location_panel(panel_tag)
 
-        emp["last_post"] = self._get_last_post(emp)
+        emp["last_post"] = _get_employer_last_post(emp)
 
         return emp
-
-    def _get_last_post(self, emp):
-        if not len(emp["jobs"]):
-            return emp["last_update"]
-        return max([jt["last_post"] for jt in emp["jobs"]])
 
     def _parse_last_update(self, company_tag):
         left_column = company_tag.find(class_="col-md-8 col-left")
