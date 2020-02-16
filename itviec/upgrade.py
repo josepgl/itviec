@@ -194,7 +194,8 @@ def calculate_employer_upgrades(feed_jobs):
             if updated_db:
                 already_up_to_date += 1
             else:
-                print("Delta: {} | Employer: {}".format(delta, employer_code))
+                if "VERBOSE" in app.config and app.config["VERBOSE"]:
+                    print("Delta: {} | Employer: {}".format(delta, employer_code))
                 employers["update"].append(employer_code)
 
         else:
