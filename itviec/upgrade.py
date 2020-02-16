@@ -3,18 +3,17 @@ from datetime import timedelta
 
 from flask import current_app as app
 
+import itviec.source
 from itviec.db import db
-from itviec import source
 from itviec.models import Employer, Job
 from itviec.time import str_to_datetime
 from itviec.composers import install_employer
-import itviec.source
 
 from itviec.update import update_employer
 
 
 def download():
-    feed_jobs = source.get_job_tags()
+    feed_jobs = itviec.source.get_job_tags()
     downloads = calculate_downloads(feed_jobs)
 
     input("Press any key to continue...")
@@ -24,7 +23,7 @@ def download():
 
 
 def upgrade():
-    feed_jobs = source.get_job_tags()
+    feed_jobs = itviec.source.get_job_tags()
     upd = calculate_updates(feed_jobs)
 
     if not (upd["employers"]["update"] or upd["employers"]["create"] or
@@ -172,7 +171,7 @@ def calculate_employer_upgrades(feed_jobs):
     employers = {"create": [], "update": []}
     already_up_to_date = 0
 
-    emp_dates = source.get_employers_with_feed_date()
+    emp_dates = itviec.source.get_employers_with_feed_date()
     done = []
 
     for job in feed_jobs:
