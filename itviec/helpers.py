@@ -28,9 +28,11 @@ def msg(string):
         print(string)
 
 
-def fetch_url(url, headers=config.req_http_headers):
-    # print('Fetching url {}'.format(url)) # DEBUG
+def fetch_url(url, headers=None):
     error_msg = "Error {0} fetching url: {1}"
+
+    if headers is None:
+        headers = config.req_http_headers
 
     try:
         response = requests.get(url, headers=headers)

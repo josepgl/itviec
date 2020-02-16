@@ -23,6 +23,7 @@ class Config:
     EMPLOYERS_CACHE_DIR = os.path.join(CACHE_DIR, "employers")
 
     CONFIG_FILENAME = "config.py"
+    DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
     # ItViec urls
     BASE_URL = "https://itviec.com"
@@ -49,6 +50,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or \
         'sqlite:///' + os.path.join(basedir, "instance", "sqlalchemy.sqlite")
     SQLALCHEMY_ECHO = True
+    VERBOSE = True
 
 
 class TestingConfig(Config):
