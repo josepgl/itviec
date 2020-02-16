@@ -12,6 +12,8 @@ from itviec import source
 from itviec.models import Job, Employer
 from itviec.composers import compose_employer, install_employer
 from itviec.upgrade import download, upgrade
+import itviec.stats as stats
+import itviec.time
 
 
 # for debugging
@@ -114,26 +116,6 @@ def _feed(page_size):
             print("#{} [{} days ago] {}".format(count, delta.days, jt["title"]))
 
 
-def print_histogram(series, reverse=False):
-    '''series{label: count}'''
-    total = sum((series[k] for k in series))
-    for label in sorted(series, reverse=reverse):
-        percent = round(series[label] * 100 / total, 1)
-        print("{} [{}%] {}".format(label, percent, "#" * series[label]))
-
-
-def get_time_distance(time_distance):
-    time = {}
-    (count, unit, _) = time_distance.split(" ")
-    if unit.startswith("minute"):
-        time["minutes"] = int(count)
-    elif unit.startswith("hour"):
-        time["hours"] = int(count)
-    elif unit.startswith("day"):
-        time["days"] = int(count)
-    return time
-
-
 @cmd_bp.cli.command('histogram')
 def _histogram():
     jpd = {}
@@ -146,22 +128,21 @@ def _histogram():
         else:
             jpd[post_date] = 1
 
-    print_histogram(jpd)
+    stats.print_histogram(jpd)
 
 
 @cmd_bp.cli.command('distance-histo')
 def _distance_histo():
     days_ago = {0: 0}
     for jt in source.get_timed_job_tags():
-        print(jt["distance"])
-        time = get_time_distance(jt["distance"])
+        time = itviec.time.get_distance(jt["distance"])
         if "days" in time:
             count = time["days"]
             days_ago[count] = days_ago[count] + 1 if count in days_ago else 1
         else:
             days_ago[0] += 1
 
-    print_histogram(days_ago, reverse=True)
+    stats.print_histogram(days_ago, reverse=True)
 
 
 @cmd_bp.cli.command('upgrade')

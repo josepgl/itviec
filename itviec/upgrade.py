@@ -6,7 +6,7 @@ from flask import current_app as app
 from itviec.db import db
 from itviec import source
 from itviec.models import Employer, Job
-from itviec.helpers import str_to_datetime
+from itviec.time import str_to_datetime
 from itviec.composers import install_employer
 import itviec.source
 

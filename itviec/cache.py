@@ -5,7 +5,7 @@ from datetime import timedelta
 from flask import current_app as app
 
 from itviec.parsers import EmployerParser, JobParser
-from itviec.helpers import str_to_datetime
+from itviec.time import str_to_datetime
 from itviec.source import get_employer_feed_date
 
 
@@ -79,7 +79,8 @@ def is_job_cache_hit(job_tag):
     if delta <= threshold:
         return True
 
-    print("Delta: {} | Job: {}".format(delta, code))
+    if "VERBOSE" in app.config and app.config["VERBOSE"]:
+        print("Delta: {} | Job: {}".format(delta, code))
     return False
 
 
@@ -104,7 +105,8 @@ def is_employer_cache_hit(code, last_post=None):
     if delta <= threshold:
         return True
 
-    print("Delta: {} | Employer: {}".format(delta, code))
+    if "VERBOSE" in app.config and app.config["VERBOSE"]:
+        print("Delta: {} | Employer: {}".format(delta, code))
     return False
 
 

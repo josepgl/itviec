@@ -6,7 +6,8 @@ from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
 
 from itviec.feeds import ReviewsFeed
-from itviec.helpers import fetch_url, to_json_file, to_json, str_to_datetime
+from itviec.helpers import fetch_url, to_json_file, to_json
+from itviec.time import str_to_datetime
 from itviec.feeds import JobTagIterator
 
 
@@ -536,7 +537,8 @@ class JobParser:
         filepath = os.path.join(app.config["JOBS_CACHE_DIR"], filename)
         to_json_file(self.get_dict(), filepath)
         file_size = os.path.getsize(filepath)
-        print("Saved file {} [{} bytes]".format(filename, file_size))
+        if "VERBOSE" in app.config and app.config["VERBOSE"]:
+            print("Saved file {} [{} bytes]".format(filename, file_size))
 
 
 class JobTagParser:

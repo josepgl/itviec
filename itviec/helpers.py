@@ -1,8 +1,5 @@
 import requests
 import json
-from datetime import datetime
-
-from flask import current_app as app
 
 import config
 
@@ -57,16 +54,3 @@ def to_json_file(to_json, filename):
     with open(filename, 'wb') as json_file:
         s = json.dumps(to_json, sort_keys=True, indent=2, ensure_ascii=False)
         json_file.write(s.encode('utf8'))
-
-
-def str_to_datetime(date_string):
-    return datetime.strptime(date_string, app.config["DATETIME_FORMAT"])
-
-
-def datetime_to_str(datetime_type):
-    return datetime_type.strftime(app.config["DATETIME_FORMAT"])
-
-
-def time_since(datetime_type):
-    now = datetime.now()
-    return now - datetime_type

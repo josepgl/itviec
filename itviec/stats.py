@@ -4,7 +4,7 @@ from flask import current_app as app
 
 from itviec.db import db
 from itviec.models import Job
-from itviec.helpers import str_to_datetime
+from itviec.time import str_to_datetime
 
 
 def update_jobs_stats():
@@ -116,3 +116,11 @@ def print_delta_distribution(deltas):
                 count += 1
         percent = round(count * 100 / total_deltas, 2)
         print("{} % of deltas differ more than {} hours".format(percent, hours))
+
+
+def print_histogram(series, reverse=False):
+    '''series{label: count}'''
+    total = sum((series[k] for k in series))
+    for label in sorted(series, reverse=reverse):
+        percent = round(series[label] * 100 / total, 1)
+        print("{} [{}%] {}".format(label, percent, "#" * series[label]))
