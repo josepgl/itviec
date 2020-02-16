@@ -9,28 +9,17 @@ from itviec.time import str_to_datetime
 from itviec.source import get_employer_feed_date
 
 
-def fetch_employer(employer_code, append_dict={}):
+def fetch_employer(employer_code):
     employer_p = EmployerParser(employer_code)
     employer_p.fetch_and_parse()
     employer_p.fetch_and_parse_reviews()
-    employer_p.get_dict().update(append_dict)
     employer_p.save_json()
 
 
-def fetch_job(job_code, append_dict={}):
-    '''Example:
-          itviec.cache.fetch_job(job["code"], {"last_post": job["last_post"]})
-
-    Inserts information, for example from previously read jobtag, to job
-    '''
+def fetch_job(job_code):
     job_p = JobParser(job_code)
     job_p.fetch_and_parse()
-    job_p.get_dict().update(append_dict)
     job_p.save_json()
-
-
-def fetch_job_with_stamp(job_code, post_stamp):
-    return fetch_job(job_code, {"last_post": post_stamp})
 
 
 def get_job(job_code):
@@ -114,7 +103,7 @@ def job_cache_or_fetch(job_tag):
     try:
         job_d = get_job(job_tag["code"])
     except OSError:
-        fetch_job_with_stamp(job_tag["code"], job_tag["last_post"])
+        fetch_job(job_tag["code"])
         job_d = get_job(job_tag["code"])
     return job_d
 

@@ -10,7 +10,7 @@ def install_employer(employer_code):
 
     for job_tag in emp_d["jobs"]:
         if not cache.is_job_cached(job_tag["code"]):
-            cache.fetch_job_with_stamp(job_tag["code"], job_tag["last_post"])
+            cache.fetch_job(job_tag["code"])
 
     employer = compose_employer(employer_code)
     db.session.add(employer)
@@ -59,7 +59,7 @@ def compose_job(job_tag):
     try:
         job_d = cache.get_job(job_tag["code"])
     except OSError:
-        cache.fetch_job_with_stamp(job_tag["code"], job_tag["last_post"])
+        cache.fetch_job(job_tag["code"])
         job_d = cache.get_job(job_tag["code"])
 
     str_to_tag(job_d)
