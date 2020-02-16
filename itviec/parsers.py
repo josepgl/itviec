@@ -582,11 +582,7 @@ class JobTagParser:
 def get_post_date(last_update, distance):
     last_dt = str_to_datetime(last_update)
     delta = get_time_distance_delta(distance)
-
     post_dt = last_dt - delta
-
-    now = datetime.now()
-    assert now > post_dt
     return post_dt.strftime(app.config["DATETIME_FORMAT"])
 
 
