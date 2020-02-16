@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from flask import current_app as app
 from bs4 import BeautifulSoup, Comment
