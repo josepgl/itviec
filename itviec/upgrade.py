@@ -32,21 +32,13 @@ def upgrade():
 
     input("Press any key to continue...")
 
-    if upd["employers"]["create"]:
-        print("Creating new employers...")
-        for employer_code in upd["employers"]["create"]:
-            install_employer(employer_code)
+    for employer_code in upd["employers"]["create"]:
+        print("Creating new employer {}...".format(employer_code))
+        install_employer(employer_code)
 
-    if upd["employers"]["update"]:
-        print("Updating employers...")
-        for employer_code in upd["employers"]["update"]:
-            print("Updating employer " + employer_code)
-            update_employer(employer_code)
-
-    if upd["jobs"]["update"] or upd["jobs"]["create"]:
-        print("Updating jobs...")
-        for job in upd["jobs"]["update"] + upd["jobs"]["create"]:
-            update_employer(job["employer_code"])
+    for employer_code in upd["employers"]["update"]:
+        print("Updating employer {}".format(employer_code))
+        update_employer(employer_code)
 
     calculate_updates(feed_jobs)
 
@@ -116,7 +108,23 @@ def calculate_updates(feed_jobs):
             itviec.cache.fetch_employer(job_tag["employer_code"])
 
     employers = calculate_employer_upgrades(feed_jobs)
+    _add_employers_from_jobs(employers, jobs)
+    _print_report_message(employers, jobs)
 
+    return {"jobs": jobs, "employers": employers}
+
+
+def _print_report_message(employers, jobs):
+    if employers["update"] or employers["create"] or jobs["update"] or jobs["create"]:
+        print("Total employer upgrades: updates: {}, new: {}".format(
+            len(employers["update"]), len(employers["create"])))
+        print("Total job upgrades: updates: {}, new: {}".format(
+            len(jobs["update"]), len(jobs["create"])))
+    else:
+        print("Done.")
+
+
+def _add_employers_from_jobs(employers, jobs):
     for job_tag in jobs["create"]:
         db_emp = db.session.query(Employer).filter_by(code=job_tag["employer_code"]).first()
         if db_emp:
@@ -126,15 +134,9 @@ def calculate_updates(feed_jobs):
             if job_tag["employer_code"] not in employers["create"]:
                 employers["create"].append(job_tag["employer_code"])
 
-    if employers["update"] or employers["create"] or jobs["update"] or jobs["create"]:
-        print("Total employer upgrades: updates: {}, new: {}".format(
-            len(employers["update"]), len(employers["create"])))
-        print("Total job upgrades: updates: {}, new: {}".format(
-            len(jobs["update"]), len(jobs["create"])))
-    else:
-        print("Done.")
-
-    return {"jobs": jobs, "employers": employers}
+    for job_tag in jobs["update"]:
+        if job_tag["employer_code"] not in employers["update"]:
+            employers["update"].append(job_tag["employer_code"])
 
 
 def calculate_job_upgrades(feed_jobs):
