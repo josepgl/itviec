@@ -189,7 +189,6 @@ def calculate_employer_upgrades(feed_jobs):
             db_date = str_to_datetime(has_emp.last_post).date()
             feed_date = str_to_datetime(emp_dates[employer_code]).date()
             delta = feed_date - db_date
-            updated_db = db_date == feed_date
             updated_db = delta <= threshold
 
             if updated_db:
