@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 import itviec.cache
 from itviec.composers import compose_job
 from itviec.db import db
@@ -28,8 +30,6 @@ def update_employer(employer_code):
     del employer_dict["jobs"]
 
     query = db.session.query(Employer).filter(Employer.code == employer_dict["code"])
-    employer = query.first()
-
     query.update(employer_dict)
     db.session.commit()
 
@@ -104,7 +104,7 @@ def update_employer_addresses(employer, employer_dict):
 
             try:
                 db.session.commit()
-            except:
+            except IntegrityError:
                 print("FAILURE!! db.session.dirty")
                 pprint(db.session.dirty)
                 # raise
