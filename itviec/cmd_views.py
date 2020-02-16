@@ -7,13 +7,12 @@ from flask import current_app as app
 
 import itviec.cache
 import itviec.stats
+import itviec.time
 from itviec.db import db
 from itviec import source
 from itviec.models import Job, Employer
 from itviec.composers import compose_employer, install_employer
 from itviec.upgrade import download, upgrade
-import itviec.stats as stats
-import itviec.time
 
 
 # for debugging
@@ -128,7 +127,7 @@ def _histogram():
         else:
             jpd[post_date] = 1
 
-    stats.print_histogram(jpd)
+    itviec.stats.print_histogram(jpd)
 
 
 @cmd_bp.cli.command('distance-histo')
@@ -142,7 +141,7 @@ def _distance_histo():
         else:
             days_ago[0] += 1
 
-    stats.print_histogram(days_ago, reverse=True)
+    itviec.stats.print_histogram(days_ago, reverse=True)
 
 
 @cmd_bp.cli.command('upgrade')
