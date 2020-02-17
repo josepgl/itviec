@@ -159,7 +159,8 @@ def calculate_job_upgrades(feed_jobs):
                 jobs["update"].append(job)
 
         else:
-            print("Job '{}' not found in database, needs to be created.".format(job["code"]))
+            if "VERBOSE" in app.config and app.config["VERBOSE"]:
+                print("Job '{}' not found in database, needs to be created.".format(job["code"]))
             jobs["create"].append(job)
 
     if "VERBOSE" in app.config and app.config["VERBOSE"]:
@@ -196,6 +197,7 @@ def calculate_employer_upgrades(feed_jobs):
                 already_up_to_date += 1
             else:
                 if "VERBOSE" in app.config and app.config["VERBOSE"]:
+                    print("Employer '{}' needs to be updated.".format(job["code"]))
                     print("Delta: {} | Employer: {}".format(delta, employer_code))
                 employers["update"].append(employer_code)
 

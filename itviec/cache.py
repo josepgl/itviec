@@ -54,7 +54,7 @@ def is_job_cache_hit(job_tag):
     try:
         cache = get_job(code)
     except OSError:
-        if app.config["DEBUG"] is True:
+        if "VERBOSE" in app.config and app.config["VERBOSE"]:
             print("Could not find cache for job with code '{}'".format(code))
         return False
 
@@ -78,7 +78,7 @@ def is_employer_cache_hit(code, last_post=None):
     try:
         cache = get_employer(code)
     except OSError:
-        if app.config["DEBUG"] is True:
+        if "VERBOSE" in app.config and app.config["VERBOSE"]:
             print("Could not find cache for employer with code '{}'".format(code))
         return False
 
